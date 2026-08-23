@@ -6,6 +6,7 @@ A collection of self-contained browser calculators.
 
 - Group Expense Tracker: split shared costs by group, headcount, date ranges, and prior payments. Includes CSV import/export and two sharing modes: snapshot links (data encoded in the URL hash) and optional live cloud trackers (shared at a link anyone can edit, keeping the last 5 revisions).
 - Retirement Planner: project savings year by year through retirement and run a Monte Carlo simulation to estimate the probability the plan lasts. Models account types (taxable/traditional/Roth/HSA), taxes, RMDs, Social Security claiming, phased spending, and healthcare/long-term care. Calculation logic lives in `retirement-engine.js`. See `docs/retirement-calculator-plan.md` for the design.
+- FIRE Calculator: three financial-independence numbers in today's dollars — the tax-aware FIRE number, the Coast FIRE amount needed today to stop saving, and years to FI on the current path. Calculation logic lives in `fire-engine.js`. See `docs/fire-calculator-plan.md` for the design.
 
 Open `index.html` to start from the calculator landing page.
 
@@ -20,6 +21,7 @@ node scripts/check-links.js
 node scripts/check-handlers.js
 node scripts/retirement-tests.js
 node scripts/cloud-client-tests.js
+node scripts/fire-tests.js
 ```
 
 `check-handlers.js` verifies that every inline `onclick`-style handler resolves

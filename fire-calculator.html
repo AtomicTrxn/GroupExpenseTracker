@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculators · FIRE Calculator</title>
+<style>
+  :root{
+    --navy:#2e3440;
+    --teal:#88c0d0;
+    --sand:#e5e9f0;
+    --paper:#eceff4;
+    --ink:#2e3440;
+    --muted:#4c566a;
+    --coral:#bf616a;
+    --line:#d8dee9;
+    --good:#a3be8c;
+    --gold:#ebcb8b;
+    --frost:#5e81ac;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--sand);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:32px 16px 64px;}
+  .wrap{max-width:1000px;margin:0 auto;}
+  .topnav{margin-bottom:18px;}
+  .backlink{color:var(--muted);font-size:13px;text-decoration:none;font-weight:600;}
+  .backlink:hover{color:var(--navy);text-decoration:underline;}
+  header{border-bottom:2px solid var(--navy);padding-bottom:18px;margin-bottom:20px;}
+  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:6px;}
+  h1{font-family:Georgia,'Iowan Old Style',serif;font-size:34px;margin:0 0 6px;color:var(--navy);letter-spacing:.01em;}
+  .sub{color:var(--muted);font-size:14.5px;line-height:1.5;max-width:680px;}
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center;}
+  .toolbtn{border:1px solid var(--navy);background:var(--paper);color:var(--navy);border-radius:4px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
+  .toolbtn:hover{background:var(--navy);color:var(--sand);}
+  .toolbtn.secondary{border-color:var(--line);color:var(--muted);}
+  .toolbtn.secondary:hover{background:var(--line);color:var(--ink);}
+  .toolstatus{flex-basis:100%;color:var(--muted);font-size:12px;line-height:1.4;min-height:16px;}
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-bottom:22px;box-shadow:0 1px 0 rgba(31,48,64,.04);}
+  .card h2{font-family:Georgia,serif;font-size:16px;color:var(--navy);margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .card h2 .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--navy);color:var(--sand);font-size:11px;font-family:Georgia,serif;flex:none;}
+  .card p.hint{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.5;}
+  label.fld{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px;}
+  .fld-note{font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;}
+  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;}
+  input[type=number]{width:100%;border:1px solid var(--line);background:#fff;border-radius:3px;padding:7px 8px;font-size:13.5px;color:var(--ink);font-family:inherit;-moz-appearance:textfield;appearance:textfield;}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+  .inline-suffix{position:relative;}
+  .inline-suffix input{padding-right:26px;}
+  .inline-suffix .suffix{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;}
+  details{margin-top:14px;}
+  summary{cursor:pointer;font-size:12.5px;color:var(--teal);font-weight:600;}
+  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px;}
+  th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 8px 8px;border-bottom:1px solid var(--line);}
+  td{padding:5px 8px;border-bottom:1px solid #e3e8f0;white-space:nowrap;}
+  td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  tr.hit td{background:rgba(163,190,140,.18);font-weight:700;}
+  .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;}
+
+  /* results */
+  .verdict-card{background:var(--navy);color:var(--sand);border-color:var(--navy);}
+  .verdict-card h2{color:var(--sand);}
+  .verdict-card p.hint{color:#c9d2e0;}
+  .big-num{font-family:Georgia,serif;font-size:52px;line-height:1;font-weight:700;margin:6px 0 2px;}
+  .chain{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:#c9d2e0;}
+  .chain .step{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:7px 11px;}
+  .chain .step b{color:var(--sand);font-variant-numeric:tabular-nums;}
+  .chain .op{font-weight:700;color:#aeb9cc;}
+  .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px;}
+  .metric{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:11px 13px;}
+  .metric .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:#aeb9cc;margin-bottom:5px;}
+  .metric .val{font-family:Georgia,serif;font-size:19px;font-weight:700;color:var(--sand);}
+  .metric .val.small{font-size:15px;}
+
+  .result-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;}
+  .result-head .big-num{color:var(--navy);}
+  .result-head .tag{font-size:13px;color:var(--muted);max-width:420px;line-height:1.45;}
+  .bar{height:12px;background:#fff;border:1px solid var(--line);border-radius:6px;margin-top:14px;overflow:hidden;}
+  .bar .fill{height:100%;background:var(--frost);border-radius:6px 0 0 6px;transition:width .25s ease;}
+  .bar .fill.done{background:var(--good);}
+  .bar-label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:5px;}
+  .light-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px;}
+  .light-metric{background:#fff;border:1px solid var(--line);border-radius:4px;padding:10px 13px;}
+  .light-metric .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .light-metric .val{font-family:Georgia,serif;font-size:17px;font-weight:700;color:var(--navy);}
+  .verdict-line{margin-top:14px;font-size:13.5px;line-height:1.55;}
+  .verdict-line.good{color:#5f7d4f;font-weight:600;}
+  .verdict-line.warn{color:#9a7b2d;font-weight:600;}
+  .issues{margin:12px 0 0;padding:0;list-style:none;font-size:12px;color:var(--coral);line-height:1.6;}
+  @media (max-width:640px){
+    body{padding:20px 10px 48px;}
+    h1{font-size:26px;}
+    .big-num{font-size:40px;}
+    .scroller table{min-width:520px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="topnav" aria-label="Calculator navigation">
+    <a class="backlink" href="index.html">All calculators</a>
+  </nav>
+  <header>
+    <div class="eyebrow">Plan honestly · everything on this device</div>
+    <h1>FIRE Calculator</h1>
+    <p class="sub">Three numbers on one screen: the nest egg that funds your life (<b>FIRE number</b>), what you need invested today to stop saving forever (<b>Coast FIRE</b>), and when you get there on your current path (<b>years to FI</b>). All figures are in today's dollars, taxes included.</p>
+  </header>
+
+  <div class="toolbar">
+    <button class="toolbtn" onclick="loadSampleData()">Load sample data</button>
+    <button class="toolbtn secondary" onclick="resetDefaults()">Reset to defaults</button>
+    <div class="toolstatus" id="toolStatus" aria-live="polite"></div>
+  </div>
+
+  <!-- RESULTS (top so edits show impact immediately) -->
+  <div class="card verdict-card">
+    <h2><span class="n">1</span>Your FIRE number</h2>
+    <p class="hint">The portfolio that lets you withdraw enough each year to cover your living expenses <em>and</em> the taxes on the withdrawal, at your safe withdrawal rate.</p>
+    <div class="big-num" id="fireNum">—</div>
+    <div class="chain" id="fireChain"></div>
+    <div class="metric-grid">
+      <div class="metric"><div class="k">Yearly draw needed (pre-tax)</div><div class="val small" id="grossDraw">—</div></div>
+      <div class="metric"><div class="k">Multiple of spending</div><div class="val small" id="spendMultiple">—</div></div>
+      <div class="metric"><div class="k">Real return used</div><div class="val small" id="realReturnOut">—</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>Coast FIRE — when can you stop saving?</h2>
+    <p class="hint">Invested today and left alone at your real return, this amount grows into your full FIRE number by your target age — no further contributions required.</p>
+    <div class="result-head">
+      <div class="big-num" id="coastNum">—</div>
+      <div class="tag" id="coastTag">Needed today so today's balance can coast to the finish line.</div>
+    </div>
+    <div class="bar"><div class="fill" id="coastBarFill" style="width:0%"></div></div>
+    <div class="bar-label"><span id="coastBarLabel">—</span><span id="coastBarPct"></span></div>
+    <div class="light-metrics">
+      <div class="light-metric"><div class="k">Your balance at age <span id="targetAgeEcho">—</span></div><div class="val" id="projectedBalance">—</div></div>
+      <div class="light-metric"><div class="k">Years of pure growth</div><div class="val" id="coastYears">—</div></div>
+      <div class="light-metric"><div class="k">Growth factor</div><div class="val" id="growthFactor">—</div></div>
+    </div>
+    <div class="verdict-line" id="coastVerdict"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Years to FI on your current path</h2>
+    <p class="hint">Your balance growing at the real return plus your yearly savings, until it crosses the FIRE number.</p>
+    <div class="result-head">
+      <div class="big-num" id="yearsFi">—</div>
+      <div class="tag" id="timelineTag"></div>
+    </div>
+    <div class="bar"><div class="fill" id="fiBarFill" style="width:0%"></div></div>
+    <div class="bar-label"><span id="fiBarLabel">—</span><span id="fiBarPct"></span></div>
+    <details id="scheduleWrap">
+      <summary>Year-by-year schedule</summary>
+      <div class="scroller">
+        <table>
+          <thead><tr><th>Year</th><th>Age</th><th style="text-align:right">Start</th><th style="text-align:right">Growth</th><th style="text-align:right">Savings</th><th style="text-align:right">End</th><th style="text-align:right">% of number</th></tr></thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <ul class="issues" id="issueList"></ul>
+
+  <!-- INPUTS -->
+  <div class="card">
+    <h2><span class="n">$</span>Your numbers</h2>
+    <p class="hint">All dollar amounts in today's dollars. Results above update automatically as you type.</p>
+    <div class="grid2">
+      <div><label class="fld">Current age</label><input type="number" data-path="you.currentAge" data-type="int"></div>
+      <div><label class="fld">Target age <span class="fld-note">(fully retired)</span></label><input type="number" data-path="you.targetAge" data-type="int"></div>
+      <div><label class="fld">Annual spending in retirement <span class="fld-note">(after tax)</span></label><div class="inline-suffix"><input type="number" data-path="money.annualSpending" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">Invested balance today</label><div class="inline-suffix"><input type="number" data-path="money.currentBalance" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">Added to investments each year</label><div class="inline-suffix"><input type="number" data-path="money.annualSavings" data-type="money"><span class="suffix">$</span></div></div>
+    </div>
+    <details>
+      <summary>Assumptions</summary>
+      <div class="grid2" style="margin-top:12px;">
+        <div><label class="fld">Safe withdrawal rate <span class="fld-note">(4% rule)</span></label><div class="inline-suffix"><input type="number" data-path="assumptions.withdrawalRate" data-type="pct" step="0.25"><span class="suffix">%</span></div></div>
+        <div><label class="fld">Effective tax rate <span class="fld-note">(on withdrawals)</span></label><div class="inline-suffix"><input type="number" data-path="assumptions.taxRate" data-type="pct" step="1"><span class="suffix">%</span></div></div>
+        <div><label class="fld">Nominal return</label><div class="inline-suffix"><input type="number" data-path="assumptions.nominalReturn" data-type="pct" step="0.5"><span class="suffix">%</span></div></div>
+        <div><label class="fld">Inflation</label><div class="inline-suffix"><input type="number" data-path="assumptions.inflation" data-type="pct" step="0.5"><span class="suffix">%</span></div></div>
+      </div>
+    </details>
+  </div>
+
+  <footer>Runs entirely in your browser; your numbers stay on this device. Estimates, not financial advice.</footer>
+</div>
+
+<script src="fire-engine.js"></script>
+<script>
+const STORAGE_KEY = 'fire-calculator-state-v1';
+let state = loadState();
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return FireEngine.normalizeState(JSON.parse(raw));
+  } catch (e) { /* corrupted storage falls through to defaults */ }
+  return FireEngine.defaultState();
+}
+
+function saveState(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode etc. */ }
+}
+
+function getByPath(obj, path){
+  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+}
+
+function setByPath(obj, path, value){
+  const keys = path.split('.');
+  const last = keys.pop();
+  const parent = keys.reduce((o, k) => o[k], obj);
+  parent[last] = value;
+}
+
+function fmtMoney(n){
+  if (!Number.isFinite(n)) return '—';
+  return '$' + Math.round(n).toLocaleString('en-US');
+}
+
+function fmtCompact(n){
+  if (!Number.isFinite(n)) return '—';
+  if (Math.abs(n) >= 1e6) return '$' + (n / 1e6).toFixed(n >= 1e7 ? 1 : 2) + 'M';
+  if (Math.abs(n) >= 1e3) return '$' + Math.round(n / 1e3) + 'k';
+  return '$' + Math.round(n);
+}
+
+function fmtPct(x){
+  if (!Number.isFinite(x)) return '—';
+  return (x * 100).toFixed(Math.abs(x * 100) < 10 ? 1 : 0) + '%';
+}
+
+function coerce(el){
+  const v = el.value.trim();
+  const t = el.dataset.type || 'money';
+  if (v === '') return null;
+  const n = Number(v);
+  if (!Number.isFinite(n)) return null;
+  if (t === 'int') return Math.round(n);
+  if (t === 'pct') return n / 100;
+  return n;
+}
+
+function displayValue(el, v){
+  const t = el.dataset.type || 'money';
+  if (v == null || !Number.isFinite(v)) return '';
+  if (t === 'pct') return String(+(v * 100).toFixed(2));
+  return String(v);
+}
+
+function syncInputsFromState(){
+  document.querySelectorAll('[data-path]').forEach(el => {
+    el.value = displayValue(el, getByPath(state, el.dataset.path));
+  });
+}
+
+function bindStaticInputs(){
+  document.querySelectorAll('[data-path]').forEach(el => {
+    const ev = el.type === 'number' ? 'input' : 'change';
+    el.addEventListener(ev, () => {
+      const v = coerce(el);
+      if (v !== null) setByPath(state, el.dataset.path, v);
+      saveState();
+      recompute();
+    });
+  });
+}
+
+function setBar(fillEl, pctEl, progress){
+  const clamped = Math.max(0, Math.min(1, progress || 0));
+  fillEl.style.width = (clamped * 100).toFixed(1) + '%';
+  fillEl.classList.toggle('done', clamped >= 1);
+  pctEl.textContent = Math.round(clamped * 100) + '% of your number';
+}
+
+function renderResults(p){
+  // Card 1: FIRE number
+  document.getElementById('fireNum').textContent = fmtCompact(p.fire.fireNumber);
+  document.getElementById('fireChain').innerHTML =
+    `<span class="step">Live on <b>${fmtMoney(p.fire.annualSpending)}</b>/yr after tax</span>` +
+    `<span class="op">÷ ${(1 - p.fire.taxRate).toFixed(2)}</span>` +
+    `<span class="step">Withdraw <b>${fmtMoney(p.fire.grossWithdrawal)}</b>/yr pre-tax</span>` +
+    `<span class="op">÷ ${fmtPct(p.fire.withdrawalRate)} withdrawal rate</span>` +
+    `<span class="op">=</span>` +
+    `<span class="step"><b>${fmtMoney(p.fire.fireNumber)}</b></span>`;
+  document.getElementById('grossDraw').textContent = fmtMoney(p.fire.grossWithdrawal) + '/yr';
+  document.getElementById('spendMultiple').textContent = p.fire.spendingMultiple.toFixed(1) + '× spending';
+  document.getElementById('realReturnOut').textContent = fmtPct(p.realReturn) + ' real';
+
+  // Card 2: Coast FIRE
+  document.getElementById('coastNum').textContent = fmtCompact(p.coast.coastNumber);
+  document.getElementById('targetAgeEcho').textContent = state.you.targetAge;
+  document.getElementById('projectedBalance').textContent = fmtCompact(p.coast.projectedBalance);
+  document.getElementById('coastYears').textContent = p.coast.years;
+  document.getElementById('growthFactor').textContent = '×' + p.coast.growthFactor.toFixed(2);
+  setBar(document.getElementById('coastBarFill'), document.getElementById('coastBarPct'), p.coast.coastProgress);
+  document.getElementById('coastBarLabel').textContent =
+    fmtCompact(state.money.currentBalance) + ' invested vs ' + fmtCompact(p.coast.coastNumber) + ' needed';
+  const v = document.getElementById('coastVerdict');
+  if (p.coast.onTrack) {
+    v.className = 'verdict-line good';
+    v.textContent = `You are past your Coast number. From here, your existing balance can reach ${fmtCompact(p.coast.fireNumber)} by age ${state.you.targetAge} with no further saving — every dollar you add now arrives earlier or larger.`;
+  } else {
+    v.className = 'verdict-line warn';
+    v.textContent = `Not coasting yet: about ${fmtCompact(p.coast.coastNumber - state.money.currentBalance)} more invested today would let compounding finish the job by age ${state.you.targetAge} on its own.`;
+  }
+
+  // Card 3: Timeline
+  const t = p.timeline;
+  const yearsEl = document.getElementById('yearsFi');
+  if (t.reachable && t.years === 0) {
+    yearsEl.textContent = 'Now';
+    document.getElementById('timelineTag').textContent = 'Your current balance already covers your FIRE number.';
+  } else if (t.reachable) {
+    yearsEl.textContent = t.years + (t.years === 1 ? ' year' : ' years');
+    document.getElementById('timelineTag').textContent = `Financial independence around age ${t.fiAge}.`;
+  } else {
+    yearsEl.textContent = '80+ yrs';
+    document.getElementById('timelineTag').textContent = 'Not reachable within 80 years at these inputs — raise savings, lower spending, or rethink the assumptions.';
+  }
+  const startProgress = p.fire.fireNumber > 0 ? state.money.currentBalance / p.fire.fireNumber : 1;
+  setBar(document.getElementById('fiBarFill'), document.getElementById('fiBarPct'), startProgress);
+  document.getElementById('fiBarLabel').textContent =
+    fmtCompact(state.money.currentBalance) + ' today → ' + fmtCompact(p.fire.fireNumber);
+
+  const body = document.getElementById('scheduleBody');
+  body.innerHTML = t.schedule.map(row =>
+    `<tr${row.progress >= 1 ? ' class="hit"' : ''}>` +
+    `<td>${row.year}</td><td>${row.age}</td>` +
+    `<td class="num">${fmtCompact(row.startBalance)}</td>` +
+    `<td class="num">${fmtCompact(row.growth)}</td>` +
+    `<td class="num">${fmtCompact(row.contribution)}</td>` +
+    `<td class="num">${fmtCompact(row.endBalance)}</td>` +
+    `<td class="num">${Math.round(row.progress * 100)}%</td>` +
+    `</tr>`
+  ).join('');
+  document.getElementById('scheduleWrap').open = t.schedule.length > 0 && t.schedule.length <= 50;
+
+  const list = document.getElementById('issueList');
+  list.innerHTML = p.issues.map(i => `<li>${i}</li>`).join('');
+}
+
+function recompute(){
+  renderResults(FireEngine.fullProjection(state));
+}
+
+function flashStatus(msg){
+  const el = document.getElementById('toolStatus');
+  el.textContent = msg;
+  clearTimeout(flashStatus._t);
+  flashStatus._t = setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
+function loadSampleData(){
+  state = FireEngine.sampleState();
+  saveState();
+  syncInputsFromState();
+  recompute();
+  flashStatus('Sample data loaded.');
+}
+
+function resetDefaults(){
+  state = FireEngine.defaultState();
+  saveState();
+  syncInputsFromState();
+  recompute();
+  flashStatus('Reset to defaults.');
+}
+
+syncInputsFromState();
+bindStaticInputs();
+recompute();
+</script>
+</body>
+</html>
