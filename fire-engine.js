@@ -27,7 +27,9 @@
       v: 1,
       you: { currentAge: 35, targetAge: 65 },
       money: {
+        mode: 'flat', // 'flat' = single amount | 'items' = itemized budget
         annualSpending: 60000, // desired yearly living expenses, today's dollars, after tax
+        items: [], // { label, amount, frequency } — yearly cost is the sum of lines
         currentBalance: 200000,
         annualSavings: 24000
       },
@@ -43,7 +45,13 @@
   function sampleState() {
     const s = defaultState();
     s.you = { currentAge: 32, targetAge: 60 };
-    s.money = { annualSpending: 48000, currentBalance: 200000, annualSavings: 30000 };
+    s.money = {
+      mode: 'flat',
+      annualSpending: 48000,
+      items: [],
+      currentBalance: 200000,
+      annualSavings: 30000
+    };
     s.assumptions = { withdrawalRate: 0.035, taxRate: 0.18, nominalReturn: 0.07, inflation: 0.025 };
     return s;
   }
@@ -64,6 +72,29 @@
     return Number.isFinite(n) ? clamp(n, lo, hi) : fallback;
   }
 
+  function normalizeItem(it, i) {
+    it = it && typeof it === 'object' ? it : {};
+    return {
+      label: String(it.label || ('Expense ' + (i + 1))),
+      amount: Math.max(0, num(it.amount, 0)),
+      frequency: it.frequency === 'monthly' ? 'monthly' : 'annual'
+    };
+  }
+
+  // Annual-equivalent amount for a line item (the engine only ever sees annual).
+  function itemAnnual(item) {
+    return (item && item.amount > 0 ? item.amount : 0) * (item && item.frequency === 'monthly' ? 12 : 1);
+  }
+
+  // Yearly living expenses in today's dollars: the flat amount, or the sum of
+  // the itemized budget lines. Everything downstream (gross-up, FIRE number,
+  // coast, timeline) builds on this.
+  function annualSpendingFor(state) {
+    const s = normalizeState(state);
+    if (s.money.mode !== 'items' || s.money.items.length === 0) return s.money.annualSpending;
+    return s.money.items.reduce((sum, it) => sum + itemAnnual(it), 0);
+  }
+
   // Deep-fill a partial/loaded state against the defaults so the engine never
   // hits an undefined field. Coerces and clamps numeric fields.
   function normalizeState(input) {
@@ -76,7 +107,11 @@
       out.you.targetAge = clampInt(s.you.targetAge, 0, 120, d.you.targetAge);
     }
     if (s.money) {
+      out.money.mode = s.money.mode === 'items' ? 'items' : 'flat';
       out.money.annualSpending = Math.max(0, num(s.money.annualSpending, d.money.annualSpending));
+      out.money.items = Array.isArray(s.money.items)
+        ? s.money.items.map((it, i) => normalizeItem(it, i))
+        : [];
       out.money.currentBalance = Math.max(0, num(s.money.currentBalance, d.money.currentBalance));
       out.money.annualSavings = Math.max(0, num(s.money.annualSavings, d.money.annualSavings));
     }
@@ -103,6 +138,9 @@
     if (realReturn(s) <= 0) {
       issues.push('Real return is zero or negative — money loses ground to inflation under these assumptions.');
     }
+    if (s.money.mode === 'items' && s.money.items.length === 0) {
+      issues.push('Itemized spending is selected but the expense list is empty — add line items or switch back to a flat amount.');
+    }
     return issues;
   }
 
@@ -120,17 +158,18 @@
   // draw into a required nest egg.
   function fireNumber(state) {
     const s = normalizeState(state);
+    const spending = annualSpendingFor(s);
     const grossWithdrawal = s.assumptions.taxRate < 1
-      ? s.money.annualSpending / (1 - s.assumptions.taxRate)
+      ? spending / (1 - s.assumptions.taxRate)
       : Infinity;
     const fireNum = grossWithdrawal / s.assumptions.withdrawalRate;
     return {
-      annualSpending: s.money.annualSpending,
+      annualSpending: spending,
       taxRate: s.assumptions.taxRate,
       grossWithdrawal,
       withdrawalRate: s.assumptions.withdrawalRate,
       fireNumber: fireNum,
-      spendingMultiple: s.money.annualSpending > 0 ? fireNum / s.money.annualSpending : 0
+      spendingMultiple: spending > 0 ? fireNum / spending : 0
     };
   }
 
@@ -209,6 +248,7 @@
     defaultState, sampleState, normalizeState, validate,
     // primitives (exported for testing)
     realReturn, fireNumber, coastNumber, yearsToFi,
+    itemAnnual, annualSpendingFor,
     // combined
     fullProjection,
     // constants

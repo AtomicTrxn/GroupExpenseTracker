@@ -184,6 +184,63 @@ test('fullProjection wires all three results together', () => {
   assert(Array.isArray(p.issues));
 });
 
+// ---- itemized spending mode ----
+
+test('items mode sums line items, converting monthly to annual', () => {
+  const s = E.defaultState();
+  s.money.mode = 'items';
+  s.money.items = [
+    { label: 'Mortgage', amount: 2000, frequency: 'monthly' },
+    { label: 'Property tax', amount: 6000, frequency: 'annual' },
+    { label: 'Food', amount: 800, frequency: 'monthly' }
+  ];
+  approx(E.annualSpendingFor(s), 24000 + 6000 + 9600, 1e-9, 'sum of annual equivalents');
+});
+
+test('flat mode ignores items; empty items list falls back to the flat amount', () => {
+  const s = E.defaultState();
+  s.money.annualSpending = 50000;
+  s.money.items = [{ label: 'X', amount: 999999, frequency: 'annual' }];
+  approx(E.annualSpendingFor(s), 50000, 1e-9, 'flat ignores items');
+  s.money.mode = 'items';
+  s.money.items = [];
+  approx(E.annualSpendingFor(s), 50000, 1e-9, 'empty items falls back');
+});
+
+test('itemized FIRE number matches an equivalent flat amount', () => {
+  const flat = E.defaultState();
+  flat.money.annualSpending = 60000;
+  const itemized = E.defaultState();
+  itemized.money.mode = 'items';
+  itemized.money.items = [
+    { label: 'A', amount: 3000, frequency: 'monthly' },
+    { label: 'B', amount: 24000, frequency: 'annual' }
+  ];
+  approx(E.fireNumber(flat).fireNumber, E.fireNumber(itemized).fireNumber, 1e-6, 'same number either way');
+  approx(E.fireNumber(itemized).annualSpending, 60000, 1e-9);
+});
+
+test('normalize sanitizes malformed expense items', () => {
+  const s = E.normalizeState({ money: { mode: 'items', items: [
+    { label: '', amount: -100, frequency: 'weekly' },
+    null,
+    { label: 'Ok', amount: 500, frequency: 'monthly' }
+  ] } });
+  const [a, b, c] = s.money.items;
+  assert(a.label === 'Expense 1' && a.amount === 0 && a.frequency === 'annual', 'bad fields fall back');
+  assert(b.label === 'Expense 2' && b.amount === 0, 'null item becomes empty line');
+  assert(c.frequency === 'monthly' && c.amount === 500, 'good item preserved');
+});
+
+test('validate warns when items mode has no line items', () => {
+  const s = E.defaultState();
+  s.money.mode = 'items';
+  s.money.items = [];
+  assert(E.validate(s).some(i => /expense list is empty/i.test(i)), 'empty-list warning');
+  s.money.items = [{ label: 'X', amount: 1, frequency: 'annual' }];
+  assert(!E.validate(s).some(i => /expense list is empty/i.test(i)), 'no warning with items');
+});
+
 // ---- report ----------------------------------------------------------------
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
