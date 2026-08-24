@@ -244,24 +244,46 @@
   <!-- 5. SPENDING PLAN -->
   <div class="card">
     <h2><span class="n">5</span>Spending plan</h2>
-    <p class="hint">Budget from what you plan to spend, not a percentage of today's income. Turn on phasing to model an active early retirement that slows down later.</p>
+    <p class="hint">Budget from what you plan to spend, not a percentage of today's income. Enter one flat amount, or build your yearly living costs from line items.</p>
 
-    <div class="grid2" id="baselineWrap">
-      <div><label class="fld">Annual spending in retirement <span class="fld-note">(today's $)</span></label><div class="inline-suffix"><input type="number" data-path="spending.baseline" data-type="money"><span class="suffix">$</span></div></div>
+    <div class="segmented" id="spendModeToggle" style="margin-bottom:16px;">
+      <button data-m="flat">Flat amount</button>
+      <button data-m="items">Itemized expenses</button>
     </div>
 
-    <div class="subfields" style="border-top:none;padding-top:8px;margin-top:8px;">
-      <label class="toggle"><input type="checkbox" data-path="spending.phased.enabled" data-type="bool"> Phase spending (go-go / slow-go / no-go)</label>
-      <div class="subfields" id="phasedFields" hidden>
-        <div class="grid3">
-          <div><label class="fld">Go-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.goGo" data-type="money"><span class="suffix">$</span></div></div>
-          <div><label class="fld">Slows down at age</label><input type="number" data-path="spending.phased.slowGoAge" data-type="int"></div>
-          <div><label class="fld">Slow-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.slowGo" data-type="money"><span class="suffix">$</span></div></div>
-          <div><label class="fld">No-go at age</label><input type="number" data-path="spending.phased.noGoAge" data-type="int"></div>
-          <div><label class="fld">No-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.noGo" data-type="money"><span class="suffix">$</span></div></div>
-        </div>
-        <p class="hint" style="margin:12px 0 0;">When phasing is on, this replaces the single annual-spending figure above.</p>
+    <div id="flatFields">
+      <div class="grid2" id="baselineWrap">
+        <div><label class="fld">Annual spending in retirement <span class="fld-note">(today's $)</span></label><div class="inline-suffix"><input type="number" data-path="spending.baseline" data-type="money"><span class="suffix">$</span></div></div>
       </div>
+
+      <div class="subfields" style="border-top:none;padding-top:8px;margin-top:8px;">
+        <label class="toggle"><input type="checkbox" data-path="spending.phased.enabled" data-type="bool"> Phase spending (go-go / slow-go / no-go)</label>
+        <div class="subfields" id="phasedFields" hidden>
+          <div class="grid3">
+            <div><label class="fld">Go-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.goGo" data-type="money"><span class="suffix">$</span></div></div>
+            <div><label class="fld">Slows down at age</label><input type="number" data-path="spending.phased.slowGoAge" data-type="int"></div>
+            <div><label class="fld">Slow-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.slowGo" data-type="money"><span class="suffix">$</span></div></div>
+            <div><label class="fld">No-go at age</label><input type="number" data-path="spending.phased.noGoAge" data-type="int"></div>
+            <div><label class="fld">No-go spending</label><div class="inline-suffix"><input type="number" data-path="spending.phased.noGo" data-type="money"><span class="suffix">$</span></div></div>
+          </div>
+          <p class="hint" style="margin:12px 0 0;">When phasing is on, this replaces the single annual-spending figure above.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="itemsFields" hidden>
+      <label class="fld" style="margin-bottom:8px;">Yearly living costs, line by line <span class="fld-note">(today's dollars)</span></label>
+      <div class="scroller">
+        <table>
+          <thead><tr><th style="width:22%">Expense</th><th>Category</th><th style="width:14%">Amount</th><th>Per</th><th>Inflation</th><th style="width:9%">From age</th><th style="width:9%">To age</th><th style="width:5%"></th></tr></thead>
+          <tbody id="expenseItemRows"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:10px;">
+        <button class="addbtn" onclick="addExpenseItem()">+ Add expense</button>
+        <div id="itemsSubtotal" style="font-size:13.5px;font-weight:700;color:var(--navy);"></div>
+      </div>
+      <p class="hint" style="margin:12px 0 0;">"Fixed payment" lines never inflate — right for fixed-rate mortgage or loan payments, whose real cost shrinks over time. Blank ages run the whole plan.</p>
     </div>
 
     <div class="subfields">
@@ -435,6 +457,7 @@ function coerce(el){
   if(type==='int'){ const n=parseInt(el.value,10); return Number.isFinite(n)?n:0; }
   if(type==='money'){ const n=parseFloat(el.value); return Number.isFinite(n)?n:0; }
   if(type==='pct'){ const n=parseFloat(el.value); return Number.isFinite(n)?n/100:0; }
+  if(type==='age'){ const v=el.value.trim(); if(v==='') return null; const n=parseInt(v,10); return Number.isFinite(n)?n:null; }
   return el.value;
 }
 function displayValue(el, v){
@@ -466,6 +489,9 @@ function toggleSubfields(){
   document.getElementById('healthcareFields').hidden = !state.spending.healthcare.enabled;
   document.getElementById('ltcFields').hidden = !state.spending.ltc.enabled;
   document.getElementById('baselineWrap').style.opacity = state.spending.phased.enabled ? .5 : 1;
+  const itemsMode = state.spending.mode === 'items';
+  document.getElementById('flatFields').hidden = itemsMode;
+  document.getElementById('itemsFields').hidden = !itemsMode;
 }
 
 // ---- dynamic rows: income & one-offs -------------------------------------
@@ -505,13 +531,14 @@ function renderOneOffs(){
   });
   bindDynamic(tb);
 }
-function bindDynamic(container){
+function bindDynamic(container, afterChange){
   container.querySelectorAll('[data-path]').forEach(el=>{
     displayValue(el, getByPath(state, el.dataset.path));
     const ev = (el.type==='checkbox' || el.tagName==='SELECT') ? 'change' : 'input';
     el.addEventListener(ev, ()=>{
       setByPath(state, el.dataset.path, coerce(el));
       markUserChanged();
+      if(afterChange) afterChange();
       scheduleRecompute();
     });
   });
@@ -528,6 +555,58 @@ function addOneOff(){
   renderOneOffs(); scheduleRecompute();
 }
 function removeOneOff(i){ markUserChanged(); state.spending.oneOffs.splice(i,1); renderOneOffs(); scheduleRecompute(); }
+
+// ---- dynamic rows: itemized expenses --------------------------------------
+const CATEGORY_LABELS = { housing:'Housing', transport:'Transport', living:'Living', leisure:'Leisure', other:'Other' };
+const INFLATION_LABELS = { general:'With inflation', medical:'Medical rate', fixed:'Fixed payment' };
+function renderExpenseItems(){
+  const tb = document.getElementById('expenseItemRows');
+  tb.innerHTML = '';
+  if(!state.spending.items.length){
+    tb.innerHTML = '<tr><td colspan="8" style="color:var(--muted);font-size:12.5px;">No line items yet — add your mortgage, taxes, insurance, food, travel…</td></tr>';
+    document.getElementById('itemsSubtotal').textContent = '';
+    return;
+  }
+  state.spending.items.forEach((it,i)=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" data-path="spending.items.${i}.label"></td>
+      <td><select data-path="spending.items.${i}.category">${Object.entries(CATEGORY_LABELS).map(([v,l])=>`<option value="${v}" ${it.category===v?'selected':''}>${l}</option>`).join('')}</select></td>
+      <td><div class="inline-suffix"><input type="number" data-path="spending.items.${i}.amount" data-type="money"><span class="suffix">$</span></div></td>
+      <td><select data-path="spending.items.${i}.frequency"><option value="monthly" ${it.frequency==='monthly'?'selected':''}>Month</option><option value="annual" ${it.frequency==='annual'?'selected':''}>Year</option></select></td>
+      <td><select data-path="spending.items.${i}.inflation">${Object.entries(INFLATION_LABELS).map(([v,l])=>`<option value="${v}" ${it.inflation===v?'selected':''}>${l}</option>`).join('')}</select></td>
+      <td><input type="number" data-path="spending.items.${i}.startAge" data-type="age"></td>
+      <td><input type="number" data-path="spending.items.${i}.endAge" data-type="age"></td>
+      <td><button class="iconbtn" title="Remove" onclick="removeExpenseItem(${i})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  bindDynamic(tb, updateItemsSubtotal);
+  updateItemsSubtotal();
+}
+function updateItemsSubtotal(){
+  const items = state.spending.items || [];
+  const total = items.reduce((sum,it)=>sum+E.itemAnnual(it),0);
+  document.getElementById('itemsSubtotal').textContent = items.length
+    ? `Total: ${fmt(Math.round(total))}/yr in today's dollars`
+    : '';
+}
+function addExpenseItem(){
+  markUserChanged();
+  if(!Array.isArray(state.spending.items)) state.spending.items = [];
+  state.spending.items.push({ label:'', category:'other', amount:0, frequency:'annual', inflation:'general', startAge:null, endAge:null });
+  renderExpenseItems(); scheduleRecompute();
+}
+function removeExpenseItem(i){ markUserChanged(); state.spending.items.splice(i,1); renderExpenseItems(); scheduleRecompute(); }
+
+// ---- spending mode toggle -------------------------------------------------
+document.getElementById('spendModeToggle').addEventListener('click',(e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  state.spending.mode = btn.dataset.m === 'items' ? 'items' : 'flat';
+  markUserChanged();
+  syncInputsFromState();
+  renderExpenseItems();
+  scheduleRecompute();
+});
 
 // ---- method toggle -------------------------------------------------------
 const METHOD_HINTS = {
@@ -842,7 +921,7 @@ async function handleCsvImport(files){
       if(fi<0 || vi<0) throw new Error(`${file.name}: expected Field and Value columns (use this tool's own export).`);
       const draft = { v:1 };
       // reset arrays we rebuild from indices
-      draft.income = []; draft.spending = { oneOffs: [] };
+      draft.income = []; draft.spending = { oneOffs: [], items: [] };
       rows.slice(1).forEach(r=>{
         const key = (r[fi]||'').trim(); if(!key) return;
         let raw = (r[vi]||'').trim();
@@ -874,6 +953,7 @@ function fullRender(){
   syncInputsFromState();
   renderIncome();
   renderOneOffs();
+  renderExpenseItems();
   recompute();
 }
 
