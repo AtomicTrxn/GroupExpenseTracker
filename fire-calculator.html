@@ -53,6 +53,13 @@
   td{padding:5px 8px;border-bottom:1px solid #e3e8f0;white-space:nowrap;}
   td.num{text-align:right;font-variant-numeric:tabular-nums;}
   tr.hit td{background:rgba(163,190,140,.18);font-weight:700;}
+  .segmented{display:inline-flex;border:1px solid var(--navy);border-radius:4px;overflow:hidden;flex-wrap:wrap;}
+  .segmented button{border:none;background:var(--paper);color:var(--navy);padding:8px 15px;font-size:12.5px;cursor:pointer;font-weight:600;}
+  .segmented button.active{background:var(--navy);color:var(--sand);}
+  .addbtn{border:1px dashed var(--teal);background:transparent;color:#4f8a8f;border-radius:3px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:600;}
+  .addbtn:hover{background:rgba(79,138,143,.08);}
+  .iconbtn{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+  .iconbtn:hover{background:var(--sand);color:var(--navy);}
   .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;}
 
@@ -170,10 +177,38 @@
     <div class="grid2">
       <div><label class="fld">Current age</label><input type="number" data-path="you.currentAge" data-type="int"></div>
       <div><label class="fld">Target age <span class="fld-note">(fully retired)</span></label><input type="number" data-path="you.targetAge" data-type="int"></div>
-      <div><label class="fld">Annual spending in retirement <span class="fld-note">(after tax)</span></label><div class="inline-suffix"><input type="number" data-path="money.annualSpending" data-type="money"><span class="suffix">$</span></div></div>
       <div><label class="fld">Invested balance today</label><div class="inline-suffix"><input type="number" data-path="money.currentBalance" data-type="money"><span class="suffix">$</span></div></div>
       <div><label class="fld">Added to investments each year</label><div class="inline-suffix"><input type="number" data-path="money.annualSavings" data-type="money"><span class="suffix">$</span></div></div>
     </div>
+
+    <div style="margin-top:16px;">
+      <label class="fld" style="margin-bottom:8px;">Annual spending in retirement <span class="fld-note">(after tax, today's $)</span></label>
+      <div class="segmented" id="spendModeToggle">
+        <button data-m="flat">Single amount</button>
+        <button data-m="items">Itemized expenses</button>
+      </div>
+
+      <div id="flatFields" style="margin-top:12px;">
+        <div class="grid2">
+          <div><div class="inline-suffix"><input type="number" data-path="money.annualSpending" data-type="money"><span class="suffix">$</span></div></div>
+        </div>
+      </div>
+
+      <div id="itemsFields" hidden style="margin-top:12px;">
+        <div class="scroller">
+          <table>
+            <thead><tr><th style="width:55%">Expense</th><th style="width:22%">Amount</th><th style="width:15%">Per</th><th style="width:8%"></th></tr></thead>
+            <tbody id="expenseItemRows"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;flex-wrap:wrap;gap:10px;">
+          <button class="addbtn" onclick="addExpenseItem()">+ Add expense</button>
+          <div id="itemsSubtotal" style="font-size:13.5px;font-weight:700;color:var(--navy);"></div>
+        </div>
+        <p class="hint" style="margin:12px 0 0;">Enter what you expect to spend on each thing — mortgage, taxes, insurance, food, travel. Amounts are today's dollars; the whole budget inflates together.</p>
+      </div>
+    </div>
+
     <details>
       <summary>Assumptions</summary>
       <div class="grid2" style="margin-top:12px;">
@@ -255,6 +290,69 @@ function syncInputsFromState(){
   document.querySelectorAll('[data-path]').forEach(el => {
     el.value = displayValue(el, getByPath(state, el.dataset.path));
   });
+  setSpendModeButtons();
+}
+
+// ---- spending mode toggle & itemized expenses ------------------------------
+function setSpendModeButtons(){
+  const itemsMode = state.money.mode === 'items';
+  [...document.getElementById('spendModeToggle').children].forEach(b =>
+    b.classList.toggle('active', (b.dataset.m === 'items') === itemsMode));
+  document.getElementById('flatFields').hidden = itemsMode;
+  document.getElementById('itemsFields').hidden = !itemsMode;
+}
+
+document.getElementById('spendModeToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  state.money.mode = btn.dataset.m === 'items' ? 'items' : 'flat';
+  saveState();
+  setSpendModeButtons();
+  renderExpenseItems();
+  recompute();
+});
+
+function renderExpenseItems(){
+  const tb = document.getElementById('expenseItemRows');
+  tb.innerHTML = '';
+  if (!state.money.items.length) {
+    tb.innerHTML = '<tr><td colspan="4" style="color:var(--muted);font-size:12.5px;">No line items yet — add your mortgage, taxes, insurance, food, travel…</td></tr>';
+    updateItemsSubtotal();
+    return;
+  }
+  state.money.items.forEach((it, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" data-path="money.items.${i}.label"></td>
+      <td><div class="inline-suffix"><input type="number" data-path="money.items.${i}.amount" data-type="money"><span class="suffix">$</span></div></td>
+      <td><select data-path="money.items.${i}.frequency"><option value="monthly" ${it.frequency === 'monthly' ? 'selected' : ''}>Month</option><option value="annual" ${it.frequency === 'annual' ? 'selected' : ''}>Year</option></select></td>
+      <td><button class="iconbtn" title="Remove" onclick="removeExpenseItem(${i})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  bindDynamic(tb, updateItemsSubtotal);
+  updateItemsSubtotal();
+}
+
+function updateItemsSubtotal(){
+  const items = state.money.items || [];
+  const total = items.reduce((sum, it) => sum + FireEngine.itemAnnual(it), 0);
+  document.getElementById('itemsSubtotal').textContent = items.length
+    ? `Total: ${fmtMoney(Math.round(total))}/yr in today's dollars`
+    : '';
+}
+
+function addExpenseItem(){
+  if (!Array.isArray(state.money.items)) state.money.items = [];
+  state.money.items.push({ label: '', amount: 0, frequency: 'annual' });
+  saveState();
+  renderExpenseItems();
+  recompute();
+}
+
+function removeExpenseItem(i){
+  state.money.items.splice(i, 1);
+  saveState();
+  renderExpenseItems();
+  recompute();
 }
 
 function bindStaticInputs(){
@@ -264,6 +362,19 @@ function bindStaticInputs(){
       const v = coerce(el);
       if (v !== null) setByPath(state, el.dataset.path, v);
       saveState();
+      recompute();
+    });
+  });
+}
+
+function bindDynamic(container, afterChange){
+  container.querySelectorAll('[data-path]').forEach(el => {
+    el.value = displayValue(el, getByPath(state, el.dataset.path));
+    const ev = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
+    el.addEventListener(ev, () => {
+      setByPath(state, el.dataset.path, coerce(el));
+      saveState();
+      if (afterChange) afterChange();
       recompute();
     });
   });
@@ -358,6 +469,7 @@ function loadSampleData(){
   state = FireEngine.sampleState();
   saveState();
   syncInputsFromState();
+  renderExpenseItems();
   recompute();
   flashStatus('Sample data loaded.');
 }
@@ -366,6 +478,7 @@ function resetDefaults(){
   state = FireEngine.defaultState();
   saveState();
   syncInputsFromState();
+  renderExpenseItems();
   recompute();
   flashStatus('Reset to defaults.');
 }
