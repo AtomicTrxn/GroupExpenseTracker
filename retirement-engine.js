@@ -35,7 +35,7 @@
 
   function defaultState() {
     return {
-      v: 1,
+      v: 2,
       you: { currentAge: 40, retireAge: 67, endAge: 95 },
       accounts: { taxable: 50000, traditional: 150000, roth: 40000, cash: 20000, hsa: 0 },
       contributions: {
@@ -48,7 +48,9 @@
         { type: 'other', label: 'Other income', amount: 0, startAge: 67, cola: false }
       ],
       spending: {
+        mode: 'flat', // 'flat' = single amount (with optional phasing) | 'items' = itemized budget
         baseline: 70000,
+        items: [], // { label, category, amount, frequency, inflation, startAge, endAge }
         phased: { enabled: false, goGo: 80000, slowGo: 65000, noGo: 55000, slowGoAge: 75, noGoAge: 85 },
         healthcare: { enabled: false, preMedicarePremium: 12000, medicareAnnual: 7000, irmaaTier: 0, medicalInflation: 0.05 },
         ltc: { enabled: false, annualCost: 100000, years: 3, startAge: 88 },
@@ -79,7 +81,14 @@
     s.accounts = { taxable: 120000, traditional: 380000, roth: 90000, cash: 30000, hsa: 15000 };
     s.contributions = { taxable: 6000, traditional: 20000, roth: 7000, hsa: 4000, employerMatch: 8000 };
     s.income[0].amount = 34000;
-    s.spending.baseline = 85000;
+    s.spending.mode = 'items';
+    s.spending.items = [
+      { label: 'Mortgage', category: 'housing', amount: 1800, frequency: 'monthly', inflation: 'fixed', startAge: null, endAge: 75 },
+      { label: 'Property tax & insurance', category: 'housing', amount: 9000, frequency: 'annual', inflation: 'general', startAge: null, endAge: null },
+      { label: 'Food & household', category: 'living', amount: 1600, frequency: 'monthly', inflation: 'general', startAge: null, endAge: null },
+      { label: 'Travel & hobbies', category: 'leisure', amount: 12000, frequency: 'annual', inflation: 'general', startAge: null, endAge: 85 },
+      { label: 'Medigap premium', category: 'living', amount: 3000, frequency: 'annual', inflation: 'medical', startAge: 65, endAge: null }
+    ];
     s.spending.phased.enabled = true;
     s.spending.healthcare.enabled = true;
     s.strategy.ssClaimAge = 70;
@@ -91,6 +100,35 @@
   function num(v, fallback) {
     const n = Number(v);
     return Number.isFinite(n) ? n : (fallback || 0);
+  }
+
+  const ITEM_CATEGORIES = ['housing', 'transport', 'living', 'leisure', 'other'];
+  const ITEM_INFLATION = ['general', 'medical', 'fixed'];
+
+  // Optional per-line age bounds: null/''/missing means "no bound".
+  // (Guarded before clampInt because Number(null) is 0, not NaN.)
+  function optionalAge(v) {
+    if (v == null || v === '') return null;
+    const n = Math.round(Number(v));
+    return Number.isFinite(n) ? clamp(n, 0, 120) : null;
+  }
+
+  function normalizeItem(it, i) {
+    it = it && typeof it === 'object' ? it : {};
+    return {
+      label: String(it.label || ('Expense ' + (i + 1))),
+      category: ITEM_CATEGORIES.includes(it.category) ? it.category : 'other',
+      amount: Math.max(0, num(it.amount, 0)),
+      frequency: it.frequency === 'monthly' ? 'monthly' : 'annual',
+      inflation: ITEM_INFLATION.includes(it.inflation) ? it.inflation : 'general',
+      startAge: optionalAge(it.startAge),
+      endAge: optionalAge(it.endAge)
+    };
+  }
+
+  // Annual-equivalent amount for a line item (the engine only ever sees annual).
+  function itemAnnual(item) {
+    return (item && item.amount > 0 ? item.amount : 0) * (item && item.frequency === 'monthly' ? 12 : 1);
   }
 
   // Deep-fill a partial/loaded state against the defaults so the engine never
@@ -120,7 +158,11 @@
 
     if (s.spending) {
       const sp = s.spending;
+      out.spending.mode = sp.mode === 'items' ? 'items' : 'flat';
       out.spending.baseline = Math.max(0, num(sp.baseline, d.spending.baseline));
+      if (Array.isArray(sp.items)) {
+        out.spending.items = sp.items.map((it, i) => normalizeItem(it, i));
+      }
       if (sp.phased) {
         out.spending.phased = {
           enabled: !!sp.phased.enabled,
@@ -204,6 +246,9 @@
     if (S.spending.phased.enabled && S.spending.phased.noGoAge < S.spending.phased.slowGoAge) {
       issues.push('Phased spending: the "no-go" age should not be before the "slow-go" age.');
     }
+    if (S.spending.mode === 'items' && (!Array.isArray(S.spending.items) || S.spending.items.length === 0)) {
+      issues.push('Itemized spending is selected but the expense list is empty — yearly living costs are zero until you add line items.');
+    }
     return issues;
   }
 
@@ -241,15 +286,7 @@
     const sp = S.spending;
     const infl = S.assumptions.inflation;
     const minfl = sp.healthcare.medicalInflation;
-    let base;
-    if (sp.phased.enabled) {
-      if (age < sp.phased.slowGoAge) base = sp.phased.goGo;
-      else if (age < sp.phased.noGoAge) base = sp.phased.slowGo;
-      else base = sp.phased.noGo;
-    } else {
-      base = sp.baseline;
-    }
-    let total = base * Math.pow(1 + infl, t);
+    let total = baselineComponent(S, age, t);
 
     if (sp.healthcare.enabled) {
       const hc = age < 65
@@ -415,10 +452,12 @@
     return { rows, depletionAge, success, endBalance: rows.length ? rows[rows.length - 1].total : totalAll(bal) };
   }
 
-  // The pure baseline (phased/flat) component at a given year, without healthcare/
-  // LTC/one-offs — used so alternate withdrawal methods only reshape the baseline.
+  // The pure baseline component: itemized budget when items mode is active,
+  // otherwise the single flat amount (with optional phasing). Both inflated
+  // to year t. Healthcare/LTC/one-offs are added on top by spendingForYear.
   function baselineComponent(S, age, t) {
     const sp = S.spending;
+    if (usingItems(sp)) return itemsForYear(S, age, t);
     let base;
     if (sp.phased.enabled) {
       if (age < sp.phased.slowGoAge) base = sp.phased.goGo;
@@ -428,6 +467,28 @@
       base = sp.baseline;
     }
     return base * Math.pow(1 + S.assumptions.inflation, t);
+  }
+
+  function usingItems(sp) {
+    return sp.mode === 'items' && Array.isArray(sp.items) && sp.items.length > 0;
+  }
+
+  // Sum of the enabled age-window line items for one plan year. Each line
+  // inflates at its own rate: 'fixed' never grows (nominal payment like a
+  // fixed-rate mortgage), 'medical' uses medical inflation, everything else
+  // uses general inflation.
+  function itemsForYear(S, age, t) {
+    const sp = S.spending;
+    let total = 0;
+    for (const it of sp.items) {
+      if (it.startAge != null && age < it.startAge) continue;
+      if (it.endAge != null && age > it.endAge) continue;
+      const rate = it.inflation === 'fixed' ? 0
+        : it.inflation === 'medical' ? sp.healthcare.medicalInflation
+        : S.assumptions.inflation;
+      total += itemAnnual(it) * Math.pow(1 + rate, t);
+    }
+    return total;
   }
 
   function growAll(bal, r) {
@@ -554,12 +615,18 @@
     const a = S.assumptions, y = S.you, ac = S.accounts, c = S.contributions,
       sp = S.spending, ph = sp.phased, hc = sp.healthcare, ltc = sp.ltc, st = S.strategy;
     return {
-      v: 1,
+      v: 2,
       y: [y.currentAge, y.retireAge, y.endAge],
       ac: [ac.taxable, ac.traditional, ac.roth, ac.cash, ac.hsa],
       c: [c.taxable, c.traditional, c.roth, c.hsa, c.employerMatch],
       i: S.income.map(x => [x.type, x.label, x.amount, x.startAge, x.cola ? 1 : 0]),
       sp: [sp.baseline],
+      spm: [sp.mode],
+      si: sp.items.map(it => [
+        it.label, it.category, it.amount, it.frequency, it.inflation,
+        it.startAge == null ? '' : it.startAge,
+        it.endAge == null ? '' : it.endAge
+      ]),
       ph: [ph.enabled ? 1 : 0, ph.goGo, ph.slowGo, ph.noGo, ph.slowGoAge, ph.noGoAge],
       hc: [hc.enabled ? 1 : 0, hc.preMedicarePremium, hc.medicareAnnual, hc.irmaaTier, hc.medicalInflation],
       lt: [ltc.enabled ? 1 : 0, ltc.annualCost, ltc.years, ltc.startAge],
@@ -570,13 +637,24 @@
   }
 
   function expandState(d) {
-    if (!d || d.v !== 1 || !Array.isArray(d.y)) return d; // unknown form; hand back as-is
+    if (!d || (d.v !== 1 && d.v !== 2) || !Array.isArray(d.y)) return d; // unknown form; hand back as-is
     const out = defaultState();
     out.you = { currentAge: d.y[0], retireAge: d.y[1], endAge: d.y[2] };
     if (Array.isArray(d.ac)) out.accounts = { taxable: d.ac[0], traditional: d.ac[1], roth: d.ac[2], cash: d.ac[3], hsa: d.ac[4] };
     if (Array.isArray(d.c)) out.contributions = { taxable: d.c[0], traditional: d.c[1], roth: d.c[2], hsa: d.c[3], employerMatch: d.c[4] };
     if (Array.isArray(d.i)) out.income = d.i.map(x => ({ type: x[0], label: x[1], amount: x[2], startAge: x[3], cola: !!x[4] }));
     if (Array.isArray(d.sp)) out.spending.baseline = d.sp[0];
+    if (d.v === 2) {
+      // v2 adds the itemized budget; v1 payloads keep the flat-mode defaults.
+      if (Array.isArray(d.spm)) out.spending.mode = d.spm[0] === 'items' ? 'items' : 'flat';
+      if (Array.isArray(d.si)) {
+        out.spending.items = d.si.map(x => ({
+          label: x[0], category: x[1], amount: x[2], frequency: x[3], inflation: x[4],
+          startAge: x[5] === '' || x[5] == null ? null : Number(x[5]),
+          endAge: x[6] === '' || x[6] == null ? null : Number(x[6])
+        }));
+      }
+    }
     if (Array.isArray(d.ph)) out.spending.phased = { enabled: !!d.ph[0], goGo: d.ph[1], slowGo: d.ph[2], noGo: d.ph[3], slowGoAge: d.ph[4], noGoAge: d.ph[5] };
     if (Array.isArray(d.hc)) out.spending.healthcare = { enabled: !!d.hc[0], preMedicarePremium: d.hc[1], medicareAnnual: d.hc[2], irmaaTier: d.hc[3], medicalInflation: d.hc[4] };
     if (Array.isArray(d.lt)) out.spending.ltc = { enabled: !!d.lt[0], annualCost: d.lt[1], years: d.lt[2], startAge: d.lt[3] };
@@ -598,6 +676,7 @@
     // primitives (exported for testing)
     rmdRequired, ssFactor, irmaaSurcharge, spendingForYear, incomeForYear,
     withdraw, totalAll, percentile, verdict,
+    itemAnnual, itemsForYear, baselineComponent,
     // simulation
     simulatePath, projectDeterministic, projectWithReturns, runMonteCarlo,
     // share codec

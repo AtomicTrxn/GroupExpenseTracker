@@ -390,6 +390,122 @@ test('withdrawal-order round-trips through the codec', () => {
   assert(restored.strategy.withdrawalOrder.join(',') === 'roth,cash,taxable,traditional,hsa', 'order preserved');
 });
 
+// ---- itemized post-retirement expenses ----
+
+function itemsState(overrides) {
+  const s = E.defaultState();
+  s.you = { currentAge: 65, retireAge: 65, endAge: 90 };
+  s.spending.mode = 'items';
+  s.spending.items = [
+    { label: 'Mortgage', category: 'housing', amount: 2000, frequency: 'monthly', inflation: 'fixed', startAge: null, endAge: null },
+    { label: 'Property tax', category: 'housing', amount: 6000, frequency: 'annual', inflation: 'general', startAge: null, endAge: null }
+  ];
+  return Object.assign(s, overrides);
+}
+
+test('itemAnnual converts monthly lines to annual equivalents', () => {
+  approx(E.itemAnnual({ amount: 2000, frequency: 'monthly' }), 24000, 1e-9, 'monthly x12');
+  approx(E.itemAnnual({ amount: 6000, frequency: 'annual' }), 6000, 1e-9, 'annual passthrough');
+});
+
+test('items mode sums line items in place of the flat baseline', () => {
+  const s = itemsState();
+  // t=0: mortgage 24k (fixed) + tax 6k = 30k
+  approx(E.spendingForYear(s, 65, 0), 30000, 1e-6, 't=0 sum');
+  // t=10: mortgage still 24k nominal; tax inflated at 3% for 10y
+  approx(E.spendingForYear(s, 75, 10), 24000 + 6000 * Math.pow(1.03, 10), 1e-4, 't=10 mixed inflation');
+});
+
+test('fixed lines hold nominal value so their real cost shrinks', () => {
+  const s = itemsState();
+  s.spending.items = [{ label: 'Loan', amount: 10000, frequency: 'annual', inflation: 'fixed', startAge: null, endAge: null }];
+  approx(E.spendingForYear(s, 70, 20), 10000, 1e-9, 'nominal constant');
+  approx(E.spendingForYear(s, 70, 20) / Math.pow(1.03, 20), 10000 / Math.pow(1.03, 20), 1e-6, 'real shrinks');
+});
+
+test('medical lines grow at medical inflation, not general', () => {
+  const s = itemsState();
+  s.spending.healthcare.medicalInflation = 0.05;
+  s.spending.items = [{ label: 'Premium', amount: 5000, frequency: 'annual', inflation: 'medical', startAge: null, endAge: null }];
+  approx(E.spendingForYear(s, 70, 10), 5000 * Math.pow(1.05, 10), 1e-4, 'medical rate');
+});
+
+test('age windows include and exclude line items correctly', () => {
+  const s = itemsState();
+  s.spending.items = [
+    { label: 'Early', amount: 1000, frequency: 'annual', inflation: 'general', startAge: null, endAge: 74 },
+    { label: 'Late', amount: 2000, frequency: 'annual', inflation: 'general', startAge: 80, endAge: null }
+  ];
+  approx(E.spendingForYear(s, 65, 0), 1000, 1e-9, 'early only');
+  approx(E.spendingForYear(s, 77, 12), 0, 1e-9, 'gap year');
+  approx(E.spendingForYear(s, 85, 20), 2000 * Math.pow(1.03, 20), 1e-4, 'late only');
+});
+
+test('flat mode and an equivalent items list produce identical projections', () => {
+  const flat = E.defaultState();
+  flat.you = { currentAge: 60, retireAge: 65, endAge: 90 };
+  flat.spending.baseline = 60000;
+  const itemized = E.normalizeState(JSON.parse(JSON.stringify(flat)));
+  itemized.spending.mode = 'items';
+  itemized.spending.items = [
+    { label: 'A', amount: 40000, frequency: 'annual', inflation: 'general', startAge: null, endAge: null },
+    { label: 'B', amount: 1666.6666666666667, frequency: 'monthly', inflation: 'general', startAge: null, endAge: null }
+  ];
+  const a = E.projectDeterministic(flat);
+  const b = E.projectDeterministic(itemized);
+  approx(a.endBalance, b.endBalance, 1.0, 'end balance matches (within rounding of the monthly line)');
+  assert(a.depletionAge === b.depletionAge, 'depletion age matches');
+});
+
+test('healthcare, LTC, and one-offs stay additive on top of items mode', () => {
+  const s = itemsState();
+  s.spending.healthcare.enabled = true;
+  s.spending.healthcare.medicareAnnual = 5000;
+  s.spending.ltc = { enabled: true, annualCost: 80000, years: 2, startAge: 80 };
+  s.spending.oneOffs = [{ label: 'Roof', amount: 20000, age: 70 }];
+  // base 30k + medicare 5k at 65 (t=0)
+  approx(E.spendingForYear(s, 65, 0), 35000, 1e-6, 'healthcare added');
+  // LTC window is ages 80-81; at 81 (t=16) both healthcare and LTC apply
+  const t81 = 16, minfl = s.spending.healthcare.medicalInflation;
+  const expected81 = 24000
+    + 6000 * Math.pow(1.03, t81)
+    + 5000 * Math.pow(1 + minfl, t81)
+    + 80000 * Math.pow(1 + minfl, t81);
+  approx(E.spendingForYear(s, 81, t81), expected81, 1e-3, 'LTC + healthcare added');
+  // outside the LTC window the cost drops back
+  assert(E.spendingForYear(s, 82, 17) < E.spendingForYear(s, 81, 16), 'LTC ends');
+  // one-off at 70 (t=5); healthcare is still on (Medicare 65+)
+  approx(E.spendingForYear(s, 70, 5),
+    (24000 + 6000 * Math.pow(1.03, 5)) + 5000 * Math.pow(1.05, 5) + 20000 * Math.pow(1.03, 5), 50, 'one-off added');
+});
+
+test('withdrawal methods reshape only the items component in items mode', () => {
+  const s = itemsState();
+  s.strategy.withdrawalMethod = 'fourPercent';
+  approx(E.baselineComponent(s, 70, 5), E.itemsForYear(s, 70, 5), 1e-6, 'baseline component equals items total');
+});
+
+test('normalize sanitizes malformed expense items', () => {
+  const s = E.normalizeState({ spending: { mode: 'items', items: [
+    { label: '', amount: -500, frequency: 'weekly', inflation: 'crypto', startAge: 'x', endAge: 999 },
+    null,
+    { label: 'Ok', amount: 100, frequency: 'monthly', inflation: 'fixed', startAge: 70, endAge: '' }
+  ] } });
+  const [a, b, c] = s.spending.items;
+  assert(a.label === 'Expense 1' && a.amount === 0 && a.frequency === 'annual' && a.inflation === 'general', 'bad fields fall back');
+  assert(a.startAge === null && a.endAge === 120, 'ages sanitized');
+  assert(b.label === 'Expense 2' && b.amount === 0, 'null item becomes empty line');
+  assert(c.frequency === 'monthly' && c.inflation === 'fixed' && c.startAge === 70 && c.endAge === null, 'good item preserved');
+});
+
+test('validate warns when items mode has no line items', () => {
+  const s = itemsState();
+  s.spending.items = [];
+  assert(E.validate(s).some(i => /expense list is empty/i.test(i)), 'empty-list warning');
+  s.spending.items = [{ label: 'X', amount: 1, frequency: 'annual', inflation: 'general', startAge: null, endAge: null }];
+  assert(!E.validate(s).some(i => /expense list is empty/i.test(i)), 'no warning with items');
+});
+
 // ---- report ----
 
 if (failures.length) {
