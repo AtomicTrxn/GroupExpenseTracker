@@ -23,6 +23,16 @@
   .plan-card{margin-top:26px;}
   .plan-card .empty{color:var(--muted);font-size:13.5px;}
   .plan-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;}
+  .section{margin-top:30px;}
+  .section-head{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid var(--navy);padding-bottom:8px;margin-bottom:16px;}
+  .section-head h2{font-family:Georgia,'Iowan Old Style',serif;font-size:20px;margin:0;color:var(--navy);}
+  .section-head p{margin:0;font-size:12.5px;color:var(--muted);}
+  /* the "other tools" band is deliberately quieter than the plan section */
+  .section.other{margin-top:34px;padding-top:22px;border-top:1px dashed var(--line);}
+  .section.other .section-head{border-bottom-color:var(--line);}
+  .section.other .section-head h2{color:var(--muted);font-size:17px;}
+  .calc-card.other-card{background:#fff;}
+  .calc-card.other-card .calc-icon{border-color:var(--muted);}
   @media (max-width:640px){
     body{padding:20px 10px 48px;}
     h1{font-size:30px;}
@@ -39,8 +49,73 @@
     <p class="sub">A collection of self-contained calculators for everyday planning and shared decisions.</p>
   </header>
 
-  <main class="grid" aria-label="Available calculators">
-    <a class="calc-card" href="group-expense-tracker.html">
+  <section class="section" aria-label="Retirement plan calculators">
+    <div class="section-head">
+      <h2>Retirement plan calculators</h2>
+      <p>Three steps of one plan — pay off debt, grow the nest egg, make it last. They share a single saved plan and pass numbers to each other.</p>
+    </div>
+    <main class="grid" aria-label="Retirement plan calculators">
+      <a class="calc-card" href="debt-calculator.html">
+        <div class="calc-icon" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div>
+          <h2>Debt Payoff Calculator</h2>
+          <p>Line up every debt against one monthly budget and see your debt-free date. Avalanche vs. snowball, with a month-by-month schedule.</p>
+          <span class="badge">Avalanche vs. snowball</span>
+          <span class="badge">Private / on-device</span>
+        </div>
+      </a>
+      <a class="calc-card" href="fire-calculator.html">
+        <div class="calc-icon" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div>
+          <h2>FIRE Calculator</h2>
+          <p>Your FIRE number with taxes included, the Coast FIRE amount that lets you stop saving today, and how many years to financial independence on your current path.</p>
+          <span class="badge">Coast FIRE</span>
+          <span class="badge">Tax-aware</span>
+          <span class="badge">Private / on-device</span>
+        </div>
+      </a>
+      <a class="calc-card" href="retirement-calculator.html">
+        <div class="calc-icon" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div>
+          <h2>Retirement Planner</h2>
+          <p>Project savings year by year and run a thousand market simulations to see how likely your plan is to last.</p>
+          <span class="badge">Monte Carlo</span>
+          <span class="badge">Private / on-device</span>
+        </div>
+      </a>
+    </main>
+
+    <section class="card plan-card" id="planCard">
+      <h2><span class="n">✦</span>Current plan</h2>
+      <p class="hint">A single plan shared by the three calculators above, saved on this device. Open any of them to edit it; share links carry it between pages.</p>
+      <div class="metric-grid" id="planMetrics" hidden>
+        <div class="metric"><div class="k">Debt to pay off</div><div class="val" id="sumDebt">—</div></div>
+        <div class="metric"><div class="k">FIRE number</div><div class="val" id="sumFire">—</div></div>
+        <div class="metric"><div class="k">Planned retire age</div><div class="val" id="sumRetire">—</div></div>
+        <div class="metric"><div class="k">Last edited</div><div class="val small" id="sumEdited">—</div></div>
+      </div>
+      <p class="empty" id="planEmpty" hidden>No saved plan yet — open a calculator above to start one.</p>
+      <div class="plan-actions">
+        <button class="toolbtn secondary" onclick="exportPlanJson()">Export plan JSON</button>
+        <button class="toolbtn secondary" onclick="openPlanImport()">Import plan JSON</button>
+        <input type="file" id="planImportInput" accept=".json,application/json" hidden>
+        <div class="toolstatus" id="planStatus" aria-live="polite"></div>
+      </div>
+    </section>
+  </section>
+
+  <section class="section other" aria-label="Other tools">
+    <div class="section-head">
+      <h2>Other tools</h2>
+      <p>Separate from the retirement plan — its data is not shared with the calculators.</p>
+    </div>
+    <a class="calc-card other-card" href="group-expense-tracker.html">
       <div class="calc-icon" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
       </div>
@@ -52,58 +127,6 @@
         <span class="badge">Cloud sharing</span>
       </div>
     </a>
-    <a class="calc-card" href="debt-calculator.html">
-      <div class="calc-icon" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div>
-        <h2>Debt Payoff Calculator</h2>
-        <p>Line up every debt against one monthly budget and see your debt-free date. Avalanche vs. snowball, with a month-by-month schedule.</p>
-        <span class="badge">Avalanche vs. snowball</span>
-        <span class="badge">Private / on-device</span>
-      </div>
-    </a>
-    <a class="calc-card" href="retirement-calculator.html">
-      <div class="calc-icon" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div>
-        <h2>Retirement Planner</h2>
-        <p>Project savings year by year and run a thousand market simulations to see how likely your plan is to last.</p>
-        <span class="badge">Monte Carlo</span>
-        <span class="badge">Private / on-device</span>
-      </div>
-    </a>
-    <a class="calc-card" href="fire-calculator.html">
-      <div class="calc-icon" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div>
-        <h2>FIRE Calculator</h2>
-        <p>Your FIRE number with taxes included, the Coast FIRE amount that lets you stop saving today, and how many years to financial independence on your current path.</p>
-        <span class="badge">Coast FIRE</span>
-        <span class="badge">Tax-aware</span>
-        <span class="badge">Private / on-device</span>
-      </div>
-    </a>
-  </main>
-
-  <section class="card plan-card" id="planCard">
-    <h2><span class="n">✦</span>Current plan</h2>
-    <p class="hint">A single plan shared by the calculators, saved on this device. Open any calculator to edit it; share links carry it between pages.</p>
-    <div class="metric-grid" id="planMetrics" hidden>
-      <div class="metric"><div class="k">Debt to pay off</div><div class="val" id="sumDebt">—</div></div>
-      <div class="metric"><div class="k">FIRE number</div><div class="val" id="sumFire">—</div></div>
-      <div class="metric"><div class="k">Planned retire age</div><div class="val" id="sumRetire">—</div></div>
-      <div class="metric"><div class="k">Last edited</div><div class="val small" id="sumEdited">—</div></div>
-    </div>
-    <p class="empty" id="planEmpty" hidden>No saved plan yet — open a calculator to start one.</p>
-    <div class="plan-actions">
-      <button class="toolbtn secondary" onclick="exportPlanJson()">Export plan JSON</button>
-      <button class="toolbtn secondary" onclick="openPlanImport()">Import plan JSON</button>
-      <input type="file" id="planImportInput" accept=".json,application/json" hidden>
-      <div class="toolstatus" id="planStatus" aria-live="polite"></div>
-    </div>
   </section>
 
   <footer>Calculators run in your browser and keep data on this device unless you export it or create a share link.</footer>
