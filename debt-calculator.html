@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calculators · Debt Payoff Calculator</title>
+<link rel="stylesheet" href="shared.css">
+<style>
+  /* page-specific styles (shared base lives in shared.css) */
+  .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center;}
+  table{font-size:12px;margin-top:10px;}
+  tr.hit td{background:rgba(163,190,140,.18);font-weight:700;}
+  .prefill-banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--teal);border-radius:4px;padding:10px 14px;margin-bottom:22px;font-size:13px;color:var(--ink);}
+  .rowbtns{display:flex;gap:6px;}
+
+  /* results */
+  .big-num{font-family:Georgia,serif;font-size:52px;line-height:1;font-weight:700;margin:6px 0 2px;}
+  .result-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;}
+  .result-head .big-num{color:var(--navy);}
+  .result-head .tag{font-size:13px;color:var(--muted);max-width:420px;line-height:1.45;}
+  .bar{height:12px;background:#fff;border:1px solid var(--line);border-radius:6px;margin-top:14px;overflow:hidden;}
+  .bar .fill{height:100%;background:var(--frost);border-radius:6px 0 0 6px;transition:width .25s ease;}
+  .bar .fill.done{background:var(--good);}
+  .bar-label{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted);margin-top:5px;}
+  .light-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px;}
+  .light-metric{background:#fff;border:1px solid var(--line);border-radius:4px;padding:10px 13px;}
+  .light-metric .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:4px;}
+  .light-metric .val{font-family:Georgia,serif;font-size:17px;font-weight:700;color:var(--navy);}
+  .verdict-line{margin-top:14px;font-size:13.5px;line-height:1.55;}
+  .verdict-line.good{color:#5f7d4f;font-weight:600;}
+  .verdict-line.warn{color:#9a7b2d;font-weight:600;}
+  .derived-line{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--muted);line-height:1.55;}
+  .derived-line b{color:var(--navy);}
+  .issues{margin:12px 0 0;padding:0;list-style:none;font-size:12px;color:var(--coral);line-height:1.6;}
+
+  /* strategy comparison */
+  .compare{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:6px;}
+  .compare-col{background:#fff;border:1px solid var(--line);border-radius:4px;padding:13px 15px;}
+  .compare-col.win{border-color:var(--good);box-shadow:0 0 0 1px var(--good);}
+  .compare-col h3{margin:0 0 8px;font-family:Georgia,serif;font-size:14px;color:var(--navy);}
+  .compare-line{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px dashed var(--line);}
+  .compare-line:last-child{border-bottom:none;}
+  .compare-line .lab{color:var(--muted);}
+  .savings-note{margin-top:12px;font-size:13px;color:#5f7d4f;font-weight:600;}
+
+  @media (max-width:640px){
+    body{padding:20px 10px 48px;}
+    h1{font-size:26px;}
+    .big-num{font-size:40px;}
+    .compare{grid-template-columns:1fr;}
+    .scroller table{min-width:560px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="topnav" aria-label="Calculator navigation">
+    <a class="backlink" href="index.html">All calculators</a>
+  </nav>
+  <header>
+    <div class="eyebrow">Plan honestly · everything on this device</div>
+    <h1>Debt Payoff Calculator</h1>
+    <p class="sub">Line up every debt, set one monthly budget, and see exactly when you're debt-free. Compare <b>avalanche</b> (highest rate first — mathematically cheapest) against <b>snowball</b> (smallest balance first — fastest early wins), and watch freed minimums roll into the next target automatically.</p>
+  </header>
+
+  <div class="toolbar">
+    <button class="toolbtn" onclick="loadSampleData()">Load sample data</button>
+    <button class="toolbtn secondary" onclick="resetDefaults()">Reset to defaults</button>
+    <button class="toolbtn secondary" onclick="copyShareLink()">Copy share link</button>
+    <button class="toolbtn secondary" onclick="copyLinkFor('fire-calculator.html')">Copy link for FIRE Calculator</button>
+    <button class="toolbtn secondary" onclick="copyLinkFor('retirement-calculator.html')">Copy link for Retirement Planner</button>
+    <div class="toolstatus" id="toolStatus" aria-live="polite"></div>
+  </div>
+
+  <div class="prefill-banner" id="prefillBanner" hidden>
+    <span id="prefillMsg"></span>
+    <button class="toolbtn secondary" onclick="dismissPrefill()">Got it</button>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card verdict-card">
+    <h2><span class="n">1</span>Your payoff plan</h2>
+    <p class="hint">Month-by-month projection of the selected strategy: interest accrues first, minimums are always paid in full, and every leftover dollar rolls into the target debt.</p>
+    <div class="big-num" id="payoffTime">—</div>
+    <div class="chain" id="payoffTag"></div>
+    <div class="metric-grid">
+      <div class="metric"><div class="k">Total interest paid</div><div class="val small" id="totalInterest">—</div></div>
+      <div class="metric"><div class="k">Debt-free date</div><div class="val small" id="debtFreeDate">—</div></div>
+      <div class="metric"><div class="k">Total debt today</div><div class="val small" id="totalDebt">—</div></div>
+      <div class="metric"><div class="k">Monthly budget</div><div class="val small" id="budgetEcho">—</div></div>
+    </div>
+    <div class="bar"><div class="fill" id="principalBarFill" style="width:0%"></div></div>
+    <div class="bar-label"><span id="principalBarLabel">—</span><span id="principalBarPct"></span></div>
+    <div class="verdict-line" id="payoffVerdict"></div>
+    <div class="derived-line" id="fireLinkLine" hidden></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">2</span>Avalanche vs. snowball</h2>
+    <p class="hint">Both strategies pay the same budget; only the targeting order differs. Avalanche attacks the highest APR first, snowball the smallest balance.</p>
+    <div class="compare">
+      <div class="compare-col" id="colAvalanche">
+        <h3>Avalanche <span style="font-weight:400;font-size:11.5px;color:var(--muted)">· highest rate first</span></h3>
+        <div class="compare-line"><span class="lab">Debt-free in</span><b id="avMonths">—</b></div>
+        <div class="compare-line"><span class="lab">Total interest</span><b id="avInterest">—</b></div>
+      </div>
+      <div class="compare-col" id="colSnowball">
+        <h3>Snowball <span style="font-weight:400;font-size:11.5px;color:var(--muted)">· smallest balance first</span></h3>
+        <div class="compare-line"><span class="lab">Debt-free in</span><b id="snMonths">—</b></div>
+        <div class="compare-line"><span class="lab">Total interest</span><b id="snInterest">—</b></div>
+      </div>
+    </div>
+    <div class="savings-note" id="savingsNote"></div>
+  </div>
+
+  <div class="card">
+    <h2><span class="n">3</span>Month-by-month schedule</h2>
+    <p class="hint">Every month under the selected strategy: each balance after payments, interest charged, and any budget left over.</p>
+    <details id="scheduleWrap">
+      <summary>Show the full schedule</summary>
+      <div class="scroller">
+        <table>
+          <thead id="scheduleHead"></thead>
+          <tbody id="scheduleBody"></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <ul class="issues" id="issueList"></ul>
+
+  <!-- INPUTS -->
+  <div class="card">
+    <h2><span class="n">$</span>Your debts</h2>
+    <p class="hint">Results above update automatically as you type. APR is the yearly rate; the engine converts it to monthly itself.</p>
+
+    <div class="scroller">
+      <table>
+        <thead><tr><th style="width:26%">Debt</th><th style="width:20%">Balance</th><th style="width:14%">APR</th><th style="width:18%">Min payment</th><th style="width:14%">Order</th><th style="width:8%"></th></tr></thead>
+        <tbody id="debtRows"></tbody>
+      </table>
+    </div>
+    <button class="addbtn" onclick="addDebt()">+ Add debt</button>
+
+    <div class="grid2" style="margin-top:18px;">
+      <div><label class="fld">Total monthly debt budget</label><div class="inline-suffix"><input type="number" data-path="monthlyDebtBudget" data-type="money"><span class="suffix">$</span></div></div>
+      <div><label class="fld">Current age <span class="fld-note">(optional, for the FIRE link)</span></label><input type="number" data-path="you.currentAge" data-type="age"></div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <label class="fld" style="margin-bottom:8px;">Payoff strategy</label>
+      <div class="segmented" id="strategyToggle">
+        <button data-s="avalanche">Avalanche</button>
+        <button data-s="snowball">Snowball</button>
+        <button data-s="custom">Custom order</button>
+      </div>
+      <p class="hint" id="strategyHint" style="margin:10px 0 0;"></p>
+    </div>
+  </div>
+
+  <footer>Runs entirely in your browser; your numbers stay on this device unless you create a share link. Estimates, not financial advice.</footer>
+</div>
+
+<script src="common.js"></script>
+<script src="debt-engine.js"></script>
+<script src="plan-state.js"></script>
+<script>
+const STORAGE_KEY = 'debt-calculator-state-v1';
+let state = loadState();
+
+function loadState(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return DebtEngine.normalizeState(JSON.parse(raw));
+  } catch (e) { /* corrupted storage falls through to defaults */ }
+  return DebtEngine.defaultState();
+}
+
+function saveState(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode etc. */ }
+}
+
+const STRATEGY_HINTS = {
+  avalanche: 'Highest APR first. Mathematically the cheapest route — least total interest.',
+  snowball: 'Smallest balance first. Costs a little more in interest, but clears accounts fast for momentum.',
+  custom: 'You pick the order with the ▲/▼ buttons. Useful for overdrafts, family loans, or debts you want gone first.'
+};
+
+// ---- input binding ---------------------------------------------------------
+
+function syncInputsFromState(){
+  document.querySelectorAll('[data-path]').forEach(el => {
+    displayValue(el, getByPath(state, el.dataset.path));
+  });
+  setStrategyButtons();
+}
+
+function bindStaticInputs(){
+  document.querySelectorAll('[data-path]').forEach(el => {
+    const ev = el.type === 'number' ? 'input' : 'change';
+    el.addEventListener(ev, () => {
+      setByPath(state, el.dataset.path, coerce(el));
+      saveState();
+      recompute();
+    });
+  });
+}
+
+function bindDynamic(container, afterChange){
+  container.querySelectorAll('[data-path]').forEach(el => {
+    displayValue(el, getByPath(state, el.dataset.path));
+    el.addEventListener('input', () => {
+      setByPath(state, el.dataset.path, coerce(el));
+      saveState();
+      if (afterChange) afterChange();
+      recompute();
+    });
+  });
+}
+
+// ---- dynamic debt rows -----------------------------------------------------
+
+function renderDebtRows(){
+  const tb = document.getElementById('debtRows');
+  tb.innerHTML = '';
+  if (!state.debts.length) {
+    tb.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:12.5px;">No debts yet — add a credit card, loan, or line of credit.</td></tr>';
+    return;
+  }
+  state.debts.forEach((d, i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" data-path="debts.${i}.name"></td>
+      <td><div class="inline-suffix"><input type="number" data-path="debts.${i}.balance" data-type="money"><span class="suffix">$</span></div></td>
+      <td><div class="inline-suffix"><input type="number" data-path="debts.${i}.apr" data-type="pct" step="0.25"><span class="suffix">%</span></div></td>
+      <td><div class="inline-suffix"><input type="number" data-path="debts.${i}.minPayment" data-type="money"><span class="suffix">$</span></div></td>
+      <td><div class="rowbtns">
+        <button class="iconbtn" title="Move up" onclick="moveDebt(${i},-1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+        <button class="iconbtn" title="Move down" onclick="moveDebt(${i},1)" ${i === state.debts.length - 1 ? 'disabled' : ''}>▼</button>
+      </div></td>
+      <td><button class="iconbtn" title="Remove" onclick="removeDebt(${i})">✕</button></td>`;
+    tb.appendChild(tr);
+  });
+  bindDynamic(tb);
+}
+
+function addDebt(){
+  state.debts.push({ name: '', balance: 0, apr: 0, minPayment: 0 });
+  saveState();
+  renderDebtRows();
+  recompute();
+}
+
+function removeDebt(i){
+  state.debts.splice(i, 1);
+  saveState();
+  renderDebtRows();
+  recompute();
+}
+
+function moveDebt(i, dir){
+  const j = i + dir;
+  if (j < 0 || j >= state.debts.length) return;
+  const [row] = state.debts.splice(i, 1);
+  state.debts.splice(j, 0, row);
+  saveState();
+  renderDebtRows();
+  recompute();
+}
+
+// ---- strategy toggle -------------------------------------------------------
+
+function setStrategyButtons(){
+  [...document.getElementById('strategyToggle').children].forEach(b =>
+    b.classList.toggle('active', b.dataset.s === state.debtStrategy));
+  document.getElementById('strategyHint').textContent = STRATEGY_HINTS[state.debtStrategy] || '';
+}
+
+document.getElementById('strategyToggle').addEventListener('click', (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  state.debtStrategy = btn.dataset.s;
+  saveState();
+  setStrategyButtons();
+  recompute();
+});
+
+// ---- rendering -------------------------------------------------------------
+
+function monthsLabel(m){
+  if (m == null) return '—';
+  const y = Math.floor(m / 12), r = m % 12;
+  if (y === 0) return m + (m === 1 ? ' month' : ' months');
+  return y + (y === 1 ? ' yr ' : ' yrs ') + r + ' mo';
+}
+
+function renderResults(p){
+  const r = p.result;
+  const timeEl = document.getElementById('payoffTime');
+  if (!r.payable) {
+    timeEl.textContent = Math.round(DebtEngine.MAX_MONTHS / 12) + '+ yrs';
+    document.getElementById('payoffTag').innerHTML =
+      '<span class="step">Not payable within ' + Math.round(DebtEngine.MAX_MONTHS / 12) +
+      ' years at these inputs — raise the budget or the minimum payments.</span>';
+  } else if (r.months === 0) {
+    timeEl.textContent = 'Now';
+    document.getElementById('payoffTag').innerHTML = '<span class="step">No active debts — nothing to pay off.</span>';
+  } else {
+    timeEl.textContent = monthsLabel(r.months);
+    document.getElementById('payoffTag').innerHTML =
+      `<span class="step">Strategy: <b>${esc(strategyLabel(state.debtStrategy))}</b></span>` +
+      `<span class="step">${state.debts.filter(d => d.balance > DebtEngine.PAYOFF_EPSILON).length} active debt(s)</span>`;
+  }
+  document.getElementById('totalInterest').textContent = fmt(r.totalInterest);
+  document.getElementById('debtFreeDate').textContent =
+    r.debtFreeDate ? r.debtFreeDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long' }) : '—';
+
+  const totalDebt = state.debts.reduce((s, d) => s + d.balance, 0);
+  document.getElementById('totalDebt').textContent = fmt(totalDebt);
+  document.getElementById('budgetEcho').textContent = fmt(state.monthlyDebtBudget) + '/mo';
+
+  // principal share of every payment dollar
+  const totalPaid = r.schedule.reduce((s, row) => s + row.debts.reduce((x, d) => x + d.payment, 0), 0);
+  const principalShare = totalPaid > 0 ? (totalPaid - r.totalInterest) / totalPaid : 0;
+  const fill = document.getElementById('principalBarFill');
+  fill.style.width = (principalShare * 100).toFixed(1) + '%';
+  fill.classList.toggle('done', principalShare >= 0.999);
+  document.getElementById('principalBarLabel').textContent =
+    fmt(totalPaid - r.totalInterest) + ' to principal vs ' + fmt(r.totalInterest) + ' to interest';
+  document.getElementById('principalBarPct').textContent =
+    totalPaid > 0 ? Math.round(principalShare * 100) + '% of payments retire principal' : '';
+
+  const v = document.getElementById('payoffVerdict');
+  if (!r.payable) {
+    v.className = 'verdict-line warn';
+    v.textContent = 'This plan never finishes. Check the warnings below — usually the budget does not cover growing interest, or a minimum payment is too small.';
+  } else if (r.months > 0) {
+    v.className = 'verdict-line good';
+    v.textContent = `Debt-free ${r.debtFreeDate.toLocaleDateString(undefined, { year: 'numeric', month: 'long' })} — ${fmt(totalDebt)} retired with ${fmt(r.totalInterest)} in interest.`;
+  } else {
+    v.className = '';
+    v.textContent = '';
+  }
+
+  renderFireLink(r);
+
+  // Card 2: comparison
+  const c = p.comparison;
+  document.getElementById('avMonths').textContent = monthsLabel(c.avalanche.months);
+  document.getElementById('avInterest').textContent = fmt(c.avalanche.totalInterest);
+  document.getElementById('snMonths').textContent = monthsLabel(c.snowball.months);
+  document.getElementById('snInterest').textContent = fmt(c.snowball.totalInterest);
+  document.getElementById('colAvalanche').classList.toggle('win',
+    c.avalanche.totalInterest <= c.snowball.totalInterest);
+  document.getElementById('colSnowball').classList.toggle('win',
+    c.snowball.totalInterest < c.avalanche.totalInterest);
+  const note = document.getElementById('savingsNote');
+  if (c.avalanche.payable && c.snowball.payable && c.savings.interest > 0.5) {
+    note.textContent = `Avalanche saves ${fmt(c.savings.interest)}` +
+      (c.savings.months > 0 ? ` and finishes ${c.savings.months} month(s) earlier` : '') +
+      ' compared with the snowball on these numbers.';
+  } else if (c.avalanche.payable && c.snowball.payable) {
+    note.textContent = 'Both strategies cost the same here — order does not matter when rates are equal.';
+  } else {
+    note.textContent = '';
+  }
+
+  // Card 3: schedule
+  const head = document.getElementById('scheduleHead');
+  const body = document.getElementById('scheduleBody');
+  if (!r.schedule.length) {
+    head.innerHTML = '';
+    body.innerHTML = '<tr><td style="color:var(--muted);font-size:12.5px;">Nothing to schedule yet.</td></tr>';
+  } else {
+    head.innerHTML = '<tr><th>Mo</th>' +
+      state.debts.map(d => `<th style="text-align:right">${esc(d.name || 'Debt')}</th>`).join('') +
+      '<th style="text-align:right">Total</th><th style="text-align:right">Interest</th><th style="text-align:right">Budget left</th></tr>';
+    body.innerHTML = r.schedule.map(row => {
+      const hit = row.debts.some(d => d.balance <= DebtEngine.PAYOFF_EPSILON) &&
+                  row.month === r.schedule.findIndex(x => x.debts.some(d => d.balance <= DebtEngine.PAYOFF_EPSILON));
+      return `<tr${hit ? ' class="hit"' : ''}><td>${row.month}</td>` +
+        row.debts.map(d => `<td class="num">${fmtCompact(d.balance)}</td>`).join('') +
+        `<td class="num">${fmtCompact(row.totalBalance)}</td>` +
+        `<td class="num">${fmtCompact(row.totalInterest)}</td>` +
+        `<td class="num">${row.remainingBudget > 0 ? fmtCompact(row.remainingBudget) : '—'}</td></tr>`;
+    }).join('');
+  }
+  document.getElementById('scheduleWrap').open = r.schedule.length > 0 && r.schedule.length <= 50;
+
+  const list = document.getElementById('issueList');
+  list.innerHTML = p.issues.map(i => `<li>${esc(i)}</li>`).join('');
+}
+
+function strategyLabel(s){
+  return s === 'snowball' ? 'Snowball' : s === 'custom' ? 'Custom order' : 'Avalanche';
+}
+
+// Display-only link to FIRE (never mutates another page's inputs).
+function renderFireLink(r){
+  const el = document.getElementById('fireLinkLine');
+  const age = state.you.currentAge;
+  const investing = state.monthlyDebtBudget * 12;
+  if (!r.payable || r.months == null || r.months === 0 || !(investing > 0)) {
+    el.hidden = true;
+    return;
+  }
+  const debtFreeAge = age == null ? null : Math.ceil(age + r.months / 12);
+  el.hidden = false;
+  el.innerHTML = `→ <b>${fmtCompact(investing)}/yr</b> available for investing once debt-free` +
+    (debtFreeAge != null ? ` (around age <b>${debtFreeAge}</b>)` : '') +
+    `. During payoff years this budget services debt, not investments — a FIRE projection is only valid from debt freedom onward.` +
+    ` Use “Copy link for FIRE Calculator” above to carry these numbers over.`;
+}
+
+function recompute(){
+  renderResults(DebtEngine.fullProjection(state));
+}
+
+function flashStatus(msg, isError){
+  const el = document.getElementById('toolStatus');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--coral)' : '';
+  clearTimeout(flashStatus._t);
+  flashStatus._t = setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
+// ---- share links & prefill (opt-in; nothing is written to the URL while editing)
+
+async function copyText(text){
+  if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return; }
+  const el = document.createElement('textarea'); el.value = text; el.setAttribute('readonly', '');
+  el.style.position = 'fixed'; el.style.left = '-9999px';
+  document.body.appendChild(el); el.select(); document.execCommand('copy'); el.remove();
+}
+
+function buildShareFull(){
+  return PlanState.buildFullState({
+    origin: 'debt-calculator',
+    you: { currentAge: state.you.currentAge },
+    debts: state.debts,
+    debtStrategy: state.debtStrategy,
+    monthlyDebtBudget: state.monthlyDebtBudget
+  });
+}
+
+async function copyShareLink(){
+  try {
+    const url = await PlanState.buildShareUrl(buildShareFull(), '');
+    await copyText(url);
+    flashStatus('Copied share link. Your plan travels inside the link — anyone with it can open it.');
+  } catch (e) {
+    flashStatus('Could not create the share link.', true);
+  }
+}
+
+async function copyLinkFor(page){
+  try {
+    const full = buildShareFull();
+    full.fire = PlanState.prefillFireFromDebt(full).fire;
+    if (page === 'retirement-calculator.html') {
+      full.retirement = PlanState.prefillRetirementFromFire(full).retirement;
+    }
+    const url = await PlanState.buildShareUrl(full, page);
+    await copyText(url);
+    flashStatus('Copied link — open it in the target calculator to prefill it.');
+  } catch (e) {
+    flashStatus('Could not create the link.', true);
+  }
+}
+
+function showPrefillBanner(msg){
+  document.getElementById('prefillMsg').textContent = msg;
+  document.getElementById('prefillBanner').hidden = false;
+}
+
+function dismissPrefill(){
+  document.getElementById('prefillBanner').hidden = true;
+  PlanState.clearStateHash();
+}
+
+async function loadSharedPlan(){
+  const errors = [];
+  const shared = await PlanState.readSharedState(msg => errors.push(msg));
+  if (!shared) {
+    if (errors.length) flashStatus(errors[0], true);
+    return false;
+  }
+  if (shared.debts && shared.debts.length) {
+    state = DebtEngine.normalizeState({
+      you: { currentAge: shared.you ? shared.you.currentAge : null },
+      debts: shared.debts,
+      monthlyDebtBudget: shared.monthlyDebtBudget,
+      debtStrategy: shared.debtStrategy
+    });
+    saveState();
+    syncInputsFromState();
+    renderDebtRows();
+  }
+  showPrefillBanner('Loaded plan from another calculator — values are prefilled, edit freely.');
+  PlanState.clearStateHash(); // never re-applies after this point
+  return true;
+}
+
+function loadSampleData(){
+  state = DebtEngine.sampleState();
+  saveState();
+  syncInputsFromState();
+  renderDebtRows();
+  recompute();
+  flashStatus('Sample data loaded.');
+}
+
+function resetDefaults(){
+  state = DebtEngine.defaultState();
+  saveState();
+  syncInputsFromState();
+  renderDebtRows();
+  recompute();
+  flashStatus('Reset to defaults.');
+}
+
+bindStaticInputs();
+(async function init(){
+  await loadSharedPlan();
+  syncInputsFromState();
+  renderDebtRows();
+  recompute();
+})();
+</script>
+</body>
+</html>

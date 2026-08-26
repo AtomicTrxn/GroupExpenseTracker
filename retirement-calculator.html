@@ -4,92 +4,28 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Calculators · Retirement Planner</title>
+<link rel="stylesheet" href="shared.css">
 <style>
-  :root{
-    --navy:#2e3440;
-    --teal:#88c0d0;
-    --sand:#e5e9f0;
-    --paper:#eceff4;
-    --ink:#2e3440;
-    --muted:#4c566a;
-    --coral:#bf616a;
-    --line:#d8dee9;
-    --good:#a3be8c;
-    --gold:#ebcb8b;
-    --frost:#5e81ac;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--sand);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:32px 16px 64px;}
-  .wrap{max-width:1000px;margin:0 auto;}
-  .topnav{margin-bottom:18px;}
-  .backlink{color:var(--muted);font-size:13px;text-decoration:none;font-weight:600;}
-  .backlink:hover{color:var(--navy);text-decoration:underline;}
-  header{border-bottom:2px solid var(--navy);padding-bottom:18px;margin-bottom:20px;}
-  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:6px;}
-  h1{font-family:Georgia,'Iowan Old Style',serif;font-size:34px;margin:0 0 6px;color:var(--navy);letter-spacing:.01em;}
-  .sub{color:var(--muted);font-size:14.5px;line-height:1.5;max-width:680px;}
+  /* page-specific styles (shared base lives in shared.css) */
   .toolbar{display:grid;gap:10px;margin-bottom:24px;align-items:start;}
   .toolbar-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
-  .toolbtn{border:1px solid var(--navy);background:var(--paper);color:var(--navy);border-radius:4px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
-  .toolbtn:hover{background:var(--navy);color:var(--sand);}
-  .toolbtn.secondary{border-color:var(--line);color:var(--muted);}
-  .toolbtn.secondary:hover{background:var(--line);color:var(--ink);}
-  .toolbtn.danger{border-color:var(--coral);color:var(--coral);}
-  .toolbtn.danger:hover{background:var(--coral);color:#fff;}
-  .toolstatus{flex-basis:100%;color:var(--muted);font-size:12px;line-height:1.4;min-height:16px;}
-  .card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-bottom:22px;box-shadow:0 1px 0 rgba(31,48,64,.04);}
-  .card h2{font-family:Georgia,serif;font-size:16px;color:var(--navy);margin:0 0 4px;display:flex;align-items:center;gap:8px;}
-  .card h2 .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--navy);color:var(--sand);font-size:11px;font-family:Georgia,serif;flex:none;}
-  .card p.hint{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.5;}
-  label.fld{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px;}
-  .fld-note{font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;}
-  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;}
-  .grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 18px;}
-  input[type=text], input[type=number], input[type=date], select{width:100%;border:1px solid var(--line);background:#fff;border-radius:3px;padding:7px 8px;font-size:13.5px;color:var(--ink);font-family:inherit;}
-  /* hide native number spinners so the $ / % suffixes never collide with them */
-  input[type=number]{-moz-appearance:textfield;appearance:textfield;}
-  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
   input.invalid{border-color:var(--coral) !important;background:#fbe9eb;}
-  .inline-suffix{position:relative;}
-  .inline-suffix input{padding-right:26px;}
-  .inline-suffix .suffix{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;}
-  table{width:100%;border-collapse:collapse;font-size:13.5px;}
-  th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 8px 8px;border-bottom:1px solid var(--line);}
-  td{padding:6px 8px;border-bottom:1px solid #e3e8f0;vertical-align:middle;}
   .rowbtns{display:flex;gap:6px;}
-  .iconbtn{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
-  .iconbtn:hover{background:var(--sand);color:var(--navy);}
-  .addbtn{margin-top:10px;border:1px dashed var(--teal);background:transparent;color:var(--teal);border-radius:3px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:600;}
-  .addbtn:hover{background:rgba(79,138,143,.08);}
-  .segmented{display:inline-flex;border:1px solid var(--navy);border-radius:4px;overflow:hidden;flex-wrap:wrap;}
-  .segmented button{border:none;background:var(--paper);color:var(--navy);padding:8px 15px;font-size:12.5px;cursor:pointer;font-weight:600;}
-  .segmented button.active{background:var(--navy);color:var(--sand);}
   .toggle{display:flex;align-items:center;gap:9px;font-size:13.5px;color:var(--ink);font-weight:600;cursor:pointer;margin-bottom:2px;}
   .toggle input{width:auto;}
   .subfields{margin-top:14px;padding-top:14px;border-top:1px dashed var(--line);}
   .subfields[hidden]{display:none;}
-  details{margin-top:16px;}
-  summary{cursor:pointer;font-size:12.5px;color:var(--teal);font-weight:600;}
   .warnbox{color:var(--coral);font-size:12px;margin:12px 0 0;display:none;line-height:1.6;}
-  .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;}
+  .prefill-banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--teal);border-radius:4px;padding:10px 14px;margin-bottom:22px;font-size:13px;color:var(--ink);}
 
   /* results */
-  .verdict-card{background:var(--navy);color:var(--sand);border-color:var(--navy);}
-  .verdict-card h2{color:var(--sand);}
-  .verdict-card p.hint{color:#c9d2e0;}
   .verdict-top{display:grid;grid-template-columns:auto 1fr;gap:22px;align-items:center;}
   .verdict-num{font-family:Georgia,serif;font-size:58px;line-height:1;font-weight:700;}
   .verdict-num.good{color:var(--good);}
   .verdict-num.warn{color:var(--gold);}
   .verdict-num.bad{color:var(--coral);}
   .verdict-label{font-size:15px;font-weight:700;margin-bottom:4px;}
-  .verdict-desc{font-size:13px;color:#c9d2e0;line-height:1.5;}
-  .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px;}
-  .metric{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:11px 13px;}
-  .metric .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:#aeb9cc;margin-bottom:5px;}
-  .metric .val{font-family:Georgia,serif;font-size:20px;font-weight:700;color:var(--sand);}
-  .metric .val.small{font-size:15px;}
+  .verdict-desc{font-size:13px;color:var(--on-navy);line-height:1.5;}
   .calc-flag{font-size:11.5px;color:var(--gold);margin-top:12px;min-height:14px;}
 
   .nudges{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
@@ -109,7 +45,6 @@
   .real-toggle input{width:auto;}
   .yeartable{font-size:12px;margin-top:4px;}
   .yeartable th,.yeartable td{padding:5px 8px;white-space:nowrap;}
-  .yeartable td.num{text-align:right;font-variant-numeric:tabular-nums;}
   .yeartable tr.retire-start td{border-top:2px solid var(--frost);}
   .depleted{color:var(--coral);font-weight:700;}
 
@@ -143,6 +78,7 @@
   <div class="toolbar">
     <div class="toolbar-row">
       <button class="toolbtn" onclick="copyShareLink()">Copy shareable link</button>
+      <button class="toolbtn secondary" onclick="copyPlanShareLink()">Copy full plan link</button>
     </div>
     <div class="toolbar-row">
       <button class="toolbtn" onclick="openCsvImport()">Import CSV data</button>
@@ -154,6 +90,11 @@
     </div>
     <input id="csvImportInput" type="file" accept=".csv,text/csv" multiple style="display:none">
     <div id="csvStatus" class="toolstatus" aria-live="polite"></div>
+  </div>
+
+  <div class="prefill-banner" id="prefillBanner" hidden>
+    <span id="prefillMsg"></span>
+    <button class="toolbtn secondary" onclick="dismissPrefill()">Got it</button>
   </div>
 
   <!-- RESULTS (top so edits show impact immediately) -->
@@ -175,7 +116,7 @@
       <div class="metric"><div class="k">Good case (90th pct)</div><div class="val small" id="mHigh">—</div></div>
       <div class="metric"><div class="k">Steady-return outcome</div><div class="val small" id="mDet">—</div></div>
     </div>
-    <div id="basisNote" style="font-size:11.5px;color:#aeb9cc;margin-top:12px;"></div>
+    <div id="basisNote" style="font-size:11.5px;color:var(--on-navy-muted);margin-top:12px;"></div>
     <div class="calc-flag" id="calcFlag"></div>
   </div>
 
@@ -405,7 +346,9 @@
   <footer>Edit any field and the planner recalculates automatically. Your data stays in this browser unless you export it or create a share link. This tool is an educational estimate, not financial advice.</footer>
 </div>
 
+<script src="common.js"></script>
 <script src="retirement-engine.js"></script>
+<script src="plan-state.js"></script>
 <script>
 const E = window.RetirementEngine;
 const STORE_KEY = 'retirementCalculator.v1';
@@ -417,55 +360,8 @@ let displayReal = false;
 let scenarios = { A: null, B: null };
 let lastResult = null;
 
-// ---- path helpers --------------------------------------------------------
-function getByPath(obj, path){
-  return path.split('.').reduce((o,k)=> (o==null?undefined:o[k]), obj);
-}
-function setByPath(obj, path, value){
-  const keys = path.split('.');
-  let o = obj;
-  for(let i=0;i<keys.length-1;i++){
-    const k = keys[i];
-    const nextIsIndex = /^\d+$/.test(keys[i+1]);
-    if(o[k]==null) o[k] = nextIsIndex ? [] : {};
-    o = o[k];
-  }
-  o[keys[keys.length-1]] = value;
-}
-
-function fmt(n){
-  if(!Number.isFinite(n)) return '—';
-  const neg = n<0; n = Math.abs(n);
-  return (neg?'-$':'$') + Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-}
-function fmtPct(x){ return (x*100).toFixed(x>=0.1?0:1) + '%'; }
-function fmtCompact(n){
-  if(!Number.isFinite(n)) return '—';
-  const neg = n<0, a = Math.abs(n); const p = neg?'-$':'$';
-  if(a>=1e9) return p+(a/1e9).toFixed(1).replace(/\.0$/,'')+'B';
-  if(a>=1e6) return p+(a/1e6).toFixed(1).replace(/\.0$/,'')+'M';
-  if(a>=1e3) return p+Math.round(a/1e3)+'K';
-  return p+Math.round(a);
-}
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function realFactor(t){ return displayReal ? Math.pow(1+state.assumptions.inflation, t) : 1; }
 
-// ---- binding -------------------------------------------------------------
-function coerce(el){
-  const type = el.dataset.type;
-  if(type==='bool') return el.checked;
-  if(type==='int'){ const n=parseInt(el.value,10); return Number.isFinite(n)?n:0; }
-  if(type==='money'){ const n=parseFloat(el.value); return Number.isFinite(n)?n:0; }
-  if(type==='pct'){ const n=parseFloat(el.value); return Number.isFinite(n)?n/100:0; }
-  if(type==='age'){ const v=el.value.trim(); if(v==='') return null; const n=parseInt(v,10); return Number.isFinite(n)?n:null; }
-  return el.value;
-}
-function displayValue(el, v){
-  const type = el.dataset.type;
-  if(type==='bool'){ el.checked = !!v; return; }
-  if(type==='pct'){ el.value = v==null?'':+( (v*100).toFixed(4) ); return; }
-  el.value = (v==null?'':v);
-}
 function syncInputsFromState(){
   document.querySelectorAll('[data-path]').forEach(el=>{
     displayValue(el, getByPath(state, el.dataset.path));
@@ -878,6 +774,52 @@ async function copyShareLink(){
   }catch(e){ setCsvStatus('Could not copy automatically. Use the updated URL in the address bar.', true); location.hash = url.hash; }
 }
 
+// ---- full-plan share link (#state= format; the #data= link above is unchanged)
+function showPrefillBanner(msg){
+  document.getElementById('prefillMsg').textContent = msg;
+  document.getElementById('prefillBanner').hidden = false;
+}
+function dismissPrefill(){
+  document.getElementById('prefillBanner').hidden = true;
+  PlanState.clearStateHash();
+}
+async function copyPlanShareLink(){
+  try{
+    const full = PlanState.buildFullState({
+      origin: 'retirement-calculator',
+      you: { currentAge: state.you.currentAge },
+      retirement: state
+    });
+    const url = await PlanState.buildShareUrl(full, '');
+    await copyText(url);
+    setCsvStatus('Copied full plan link. Your plan travels inside the link — anyone with it can open it.');
+  }catch(e){ setCsvStatus('Could not create the full plan link.', true); }
+}
+async function loadPlanShareFromHash(){
+  const errors = [];
+  const shared = await PlanState.readSharedState(msg => errors.push(msg));
+  if (!shared) {
+    if (errors.length) setCsvStatus(errors[0], true);
+    return false;
+  }
+  let ret = null, msg = 'Loaded plan from another calculator — values are prefilled, edit freely.';
+  if (shared.meta && shared.meta.origin === 'debt-calculator' && shared.debts && shared.debts.length) {
+    const fireMapped = PlanState.prefillFireFromDebt(shared);
+    const mapped = PlanState.prefillRetirementFromFire({ fire: fireMapped.fire, retirement: shared.retirement });
+    ret = mapped.retirement;
+    msg = 'Loaded debt plan — accounts and spending prefilled from the payoff projection. Edit freely.';
+  } else if (shared.retirement) {
+    ret = E.normalizeState(shared.retirement);
+  } else {
+    return false;
+  }
+  state = ret;
+  markUserChanged();
+  PlanState.clearStateHash(); // never re-applies after this point
+  showPrefillBanner(msg);
+  return true;
+}
+
 // ---- CSV (single Field,Value file that round-trips everything) ------------
 function setCsvStatus(msg,isError=false){ const el=document.getElementById('csvStatus'); if(!el) return; el.textContent=msg||''; el.style.color=isError?'var(--coral)':'var(--muted)'; }
 function csvCell(v){ const s=String(v==null?'':v); return /[",\n\r]/.test(s)?`"${s.replace(/"/g,'""')}"`:s; }
@@ -959,7 +901,8 @@ function fullRender(){
 
 async function init(){
   bindStaticInputs();
-  if(!(await loadSharedDataFromHash())) loadStored();
+  const planShared = await loadPlanShareFromHash();
+  if(!planShared && !(await loadSharedDataFromHash())) loadStored();
   loadScenariosFromStore();
   fullRender();
 }

@@ -4,25 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Calculators</title>
+<link rel="stylesheet" href="shared.css">
 <style>
-  :root{
-    --navy:#2e3440;
-    --teal:#88c0d0;
-    --sand:#e5e9f0;
-    --paper:#eceff4;
-    --ink:#2e3440;
-    --muted:#4c566a;
-    --coral:#bf616a;
-    --line:#d8dee9;
-    --green:#a3be8c;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--sand);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:32px 16px 64px;}
-  .wrap{max-width:1000px;margin:0 auto;}
-  header{border-bottom:2px solid var(--navy);padding-bottom:18px;margin-bottom:24px;}
-  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:6px;}
-  h1{font-family:Georgia,'Iowan Old Style',serif;font-size:38px;margin:0 0 8px;color:var(--navy);letter-spacing:.01em;}
-  .sub{color:var(--muted);font-size:15px;line-height:1.5;max-width:650px;margin:0;}
+  /* page-specific styles (shared base lives in shared.css) */
+  :root{--green:#a3be8c;}
+  header{margin-bottom:24px;}
+  h1{font-size:38px;margin-bottom:8px;}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;}
   .calc-card{display:grid;grid-template-columns:58px 1fr;gap:16px;align-items:center;background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:18px;text-decoration:none;color:inherit;box-shadow:0 1px 0 rgba(31,48,64,.04);}
   .calc-card:hover{border-color:var(--navy);box-shadow:0 4px 18px rgba(46,52,64,.09);transform:translateY(-1px);}
@@ -33,7 +20,9 @@
   .calc-card h2{font-family:Georgia,'Iowan Old Style',serif;font-size:18px;margin:0 0 5px;color:var(--navy);}
   .calc-card p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.45;}
   .badge{display:inline-block;margin-top:9px;border:1px solid var(--green);color:#5f7d4f;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:700;}
-  footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;}
+  .plan-card{margin-top:26px;}
+  .plan-card .empty{color:var(--muted);font-size:13.5px;}
+  .plan-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;}
   @media (max-width:640px){
     body{padding:20px 10px 48px;}
     h1{font-size:30px;}
@@ -63,6 +52,17 @@
         <span class="badge">Cloud sharing</span>
       </div>
     </a>
+    <a class="calc-card" href="debt-calculator.html">
+      <div class="calc-icon" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div>
+        <h2>Debt Payoff Calculator</h2>
+        <p>Line up every debt against one monthly budget and see your debt-free date. Avalanche vs. snowball, with a month-by-month schedule.</p>
+        <span class="badge">Avalanche vs. snowball</span>
+        <span class="badge">Private / on-device</span>
+      </div>
+    </a>
     <a class="calc-card" href="retirement-calculator.html">
       <div class="calc-icon" aria-hidden="true">
         <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
@@ -88,7 +88,103 @@
     </a>
   </main>
 
+  <section class="card plan-card" id="planCard">
+    <h2><span class="n">✦</span>Current plan</h2>
+    <p class="hint">A single plan shared by the calculators, saved on this device. Open any calculator to edit it; share links carry it between pages.</p>
+    <div class="metric-grid" id="planMetrics" hidden>
+      <div class="metric"><div class="k">Debt to pay off</div><div class="val" id="sumDebt">—</div></div>
+      <div class="metric"><div class="k">FIRE number</div><div class="val" id="sumFire">—</div></div>
+      <div class="metric"><div class="k">Planned retire age</div><div class="val" id="sumRetire">—</div></div>
+      <div class="metric"><div class="k">Last edited</div><div class="val small" id="sumEdited">—</div></div>
+    </div>
+    <p class="empty" id="planEmpty" hidden>No saved plan yet — open a calculator to start one.</p>
+    <div class="plan-actions">
+      <button class="toolbtn secondary" onclick="exportPlanJson()">Export plan JSON</button>
+      <button class="toolbtn secondary" onclick="openPlanImport()">Import plan JSON</button>
+      <input type="file" id="planImportInput" accept=".json,application/json" hidden>
+      <div class="toolstatus" id="planStatus" aria-live="polite"></div>
+    </div>
+  </section>
+
   <footer>Calculators run in your browser and keep data on this device unless you export it or create a share link.</footer>
 </div>
+
+<script src="common.js"></script>
+<script src="fire-engine.js"></script>
+<script src="retirement-engine.js"></script>
+<script src="debt-engine.js"></script>
+<script src="plan-state.js"></script>
+<script>
+function planStatus(msg, isError){
+  const el = document.getElementById('planStatus');
+  el.textContent = msg || '';
+  el.style.color = isError ? 'var(--coral)' : '';
+}
+
+async function renderPlanSummary(){
+  let raw = null;
+  try { raw = localStorage.getItem(PlanState.STORAGE_KEY); } catch (e) {}
+  const metrics = document.getElementById('planMetrics');
+  const empty = document.getElementById('planEmpty');
+  if (!raw) {
+    metrics.hidden = true;
+    empty.hidden = false;
+    return;
+  }
+  let full;
+  try { full = PlanState.normalizeFullState(JSON.parse(raw)); }
+  catch (e) { metrics.hidden = true; empty.hidden = false; empty.textContent = 'Saved plan could not be read.'; return; }
+
+  const debtTotal = (full.debts || []).reduce((s, d) => s + d.balance, 0);
+  const fireNum = full.fire ? FireEngine.fireNumber(full.fire).fireNumber : null;
+  const retireAge = full.retirement ? full.retirement.you.retireAge : null;
+  document.getElementById('sumDebt').textContent = debtTotal > 0 ? fmtCompact(debtTotal) : '—';
+  document.getElementById('sumFire').textContent = fireNum != null ? fmtCompact(fireNum) : '—';
+  document.getElementById('sumRetire').textContent = retireAge != null ? 'Age ' + retireAge : '—';
+  document.getElementById('sumEdited').textContent = full.meta && full.meta.lastEdited
+    ? new Date(full.meta.lastEdited).toLocaleDateString()
+    : '—';
+  empty.hidden = true;
+  metrics.hidden = false;
+}
+
+function downloadJson(obj, name){
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+
+function exportPlanJson(){
+  PlanState.load().then(full => {
+    downloadJson(full, 'financial-plan.json');
+    planStatus('Exported the current plan as JSON.');
+  });
+}
+
+function openPlanImport(){ document.getElementById('planImportInput').click(); }
+
+document.getElementById('planImportInput').addEventListener('change', async (e) => {
+  const file = e.target.files && e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    if (!parsed || typeof parsed !== 'object') throw new Error('Not a plan file.');
+    const full = PlanState.normalizeFullState(parsed);
+    try { localStorage.setItem(PlanState.STORAGE_KEY, JSON.stringify(full)); } catch (err) {
+      throw new Error('Could not save locally (private browsing?).');
+    }
+    await renderPlanSummary();
+    planStatus('Imported plan from JSON.');
+  } catch (err) {
+    planStatus('Import failed: ' + err.message, true);
+  }
+});
+
+renderPlanSummary();
+</script>
 </body>
 </html>

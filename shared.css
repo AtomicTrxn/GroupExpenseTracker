@@ -1,0 +1,78 @@
+/*
+ * Shared styles for the calculator pages (index.html, retirement-calculator.html,
+ * fire-calculator.html). Page-specific styles live in each page's own <style>
+ * block, which loads after this file and can override anything here.
+ */
+:root{
+  --navy:#2e3440;
+  --teal:#88c0d0;
+  --sand:#e5e9f0;
+  --paper:#eceff4;
+  --ink:#2e3440;
+  --muted:#4c566a;
+  --coral:#bf616a;
+  --line:#d8dee9;
+  --good:#a3be8c;
+  --gold:#ebcb8b;
+  --frost:#5e81ac;
+  --on-navy:#c9d2e0;       /* muted text on navy cards */
+  --on-navy-muted:#aeb9cc; /* fainter labels on navy cards */
+  --row-line:#e3e8f0;      /* hairline between table rows */
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--sand);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:32px 16px 64px;}
+.wrap{max-width:1000px;margin:0 auto;}
+.topnav{margin-bottom:18px;}
+.backlink{color:var(--muted);font-size:13px;text-decoration:none;font-weight:600;}
+.backlink:hover{color:var(--navy);text-decoration:underline;}
+header{border-bottom:2px solid var(--navy);padding-bottom:18px;margin-bottom:20px;}
+.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:6px;}
+h1{font-family:Georgia,'Iowan Old Style',serif;font-size:34px;margin:0 0 6px;color:var(--navy);letter-spacing:.01em;}
+.sub{color:var(--muted);font-size:14.5px;line-height:1.5;max-width:680px;}
+.toolbtn{border:1px solid var(--navy);background:var(--paper);color:var(--navy);border-radius:4px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
+.toolbtn:hover{background:var(--navy);color:var(--sand);}
+.toolbtn.secondary{border-color:var(--line);color:var(--muted);}
+.toolbtn.secondary:hover{background:var(--line);color:var(--ink);}
+.toolstatus{flex-basis:100%;color:var(--muted);font-size:12px;line-height:1.4;min-height:16px;}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-bottom:22px;box-shadow:0 1px 0 rgba(31,48,64,.04);}
+.card h2{font-family:Georgia,serif;font-size:16px;color:var(--navy);margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+.card h2 .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--navy);color:var(--sand);font-size:11px;font-family:Georgia,serif;flex:none;}
+.card p.hint{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.5;}
+label.fld{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px;}
+.fld-note{font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px 18px;}
+/* keep entry boxes on a common line even when some labels wrap to two lines */
+.grid2>div,.grid3>div{display:flex;flex-direction:column;justify-content:flex-end;}
+input[type=text], input[type=number], input[type=date], select{width:100%;border:1px solid var(--line);background:#fff;border-radius:3px;padding:7px 8px;font-size:13.5px;color:var(--ink);font-family:inherit;}
+/* hide native number spinners so the $ / % suffixes never collide with them */
+input[type=number]{-moz-appearance:textfield;appearance:textfield;}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.inline-suffix{position:relative;}
+.inline-suffix input{padding-right:26px;}
+.inline-suffix .suffix{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;}
+details{margin-top:16px;}
+summary{cursor:pointer;font-size:12.5px;color:var(--teal);font-weight:600;}
+table{width:100%;border-collapse:collapse;font-size:13.5px;}
+th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 8px 8px;border-bottom:1px solid var(--line);}
+td{padding:6px 8px;border-bottom:1px solid var(--row-line);vertical-align:middle;}
+td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.segmented{display:inline-flex;border:1px solid var(--navy);border-radius:4px;overflow:hidden;flex-wrap:wrap;align-self:flex-start;}
+.segmented button{border:none;background:var(--paper);color:var(--navy);padding:8px 15px;font-size:12.5px;cursor:pointer;font-weight:600;}
+.segmented button.active{background:var(--navy);color:var(--sand);}
+.addbtn{margin-top:10px;border:1px dashed var(--teal);background:transparent;color:var(--teal);border-radius:3px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:600;}
+.addbtn:hover{background:rgba(79,138,143,.08);}
+.iconbtn{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
+.iconbtn:hover{background:var(--sand);color:var(--navy);}
+.scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;}
+
+/* navy result cards */
+.verdict-card{background:var(--navy);color:var(--sand);border-color:var(--navy);}
+.verdict-card h2{color:var(--sand);}
+.verdict-card p.hint{color:var(--on-navy);}
+.metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px;}
+.metric{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:11px 13px;}
+.metric .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--on-navy-muted);margin-bottom:5px;}
+.metric .val{font-family:Georgia,serif;font-size:20px;font-weight:700;color:var(--sand);}
+.metric .val.small{font-size:15px;}

@@ -3,7 +3,9 @@
 ## Repo shape
 
 - No build step, no bundler, no root `package.json`. The calculators are self-contained HTML + plain JS opened directly in a browser (`index.html` is the landing page).
-- Two apps: Group Expense Tracker (`group-expense-tracker.html`, logic in `tracker-engine.js`, cloud sync in `cloud-client.js`) and Retirement Planner (`retirement-calculator.html`, logic in `retirement-engine.js`). A third, FIRE Calculator (`fire-calculator.html`, logic in `fire-engine.js`), follows the same pattern.
+- `shared.css` and `common.js` hold the styles and DOM/formatting helpers common to all pages (color tokens, card/input/table base styles, path/formatter/binding helpers). Pages link shared.css first and load common.js before their own script; page-specific styles and handlers stay in each page.
+- Four apps: Group Expense Tracker (`group-expense-tracker.html`, logic in `tracker-engine.js`, cloud sync in `cloud-client.js`), Retirement Planner (`retirement-calculator.html`, logic in `retirement-engine.js`), FIRE Calculator (`fire-calculator.html`, logic in `fire-engine.js`), and Debt Payoff Calculator (`debt-calculator.html`, logic in `debt-engine.js`) — all following the same pattern.
+- `plan-state.js` is the shared UMD state module (unified schema, versioned migrations, `#state=` share-link compression, cross-page prefill mappings). See `docs/workflow-and-payoff.md`.
 - `worker/` is the only packaged code: a Cloudflare Worker + D1 backend (TypeScript) for the tracker's optional cloud mode. See `worker/README.md` and design docs in `docs/`.
 
 ## Checks
@@ -16,6 +18,8 @@ node scripts/check-handlers.js
 node scripts/retirement-tests.js
 node scripts/cloud-client-tests.js
 node scripts/fire-tests.js
+node scripts/debt-tests.js
+node scripts/pipeline-tests.js   # requires Node >= 18 (global CompressionStream)
 ```
 
 Worker suite (from `worker/`): `npm test` runs the real Worker against a `node:sqlite` D1 shim — no wrangler, no install needed. `npm run typecheck` does require `npm install` first.

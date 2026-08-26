@@ -4,80 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Calculators · FIRE Calculator</title>
+<link rel="stylesheet" href="shared.css">
 <style>
-  :root{
-    --navy:#2e3440;
-    --teal:#88c0d0;
-    --sand:#e5e9f0;
-    --paper:#eceff4;
-    --ink:#2e3440;
-    --muted:#4c566a;
-    --coral:#bf616a;
-    --line:#d8dee9;
-    --good:#a3be8c;
-    --gold:#ebcb8b;
-    --frost:#5e81ac;
-  }
-  *{box-sizing:border-box;}
-  body{margin:0;background:var(--sand);color:var(--ink);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;padding:32px 16px 64px;}
-  .wrap{max-width:1000px;margin:0 auto;}
-  .topnav{margin-bottom:18px;}
-  .backlink{color:var(--muted);font-size:13px;text-decoration:none;font-weight:600;}
-  .backlink:hover{color:var(--navy);text-decoration:underline;}
-  header{border-bottom:2px solid var(--navy);padding-bottom:18px;margin-bottom:20px;}
-  .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;margin-bottom:6px;}
-  h1{font-family:Georgia,'Iowan Old Style',serif;font-size:34px;margin:0 0 6px;color:var(--navy);letter-spacing:.01em;}
-  .sub{color:var(--muted);font-size:14.5px;line-height:1.5;max-width:680px;}
+  /* page-specific styles (shared base lives in shared.css) */
   .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px;align-items:center;}
-  .toolbtn{border:1px solid var(--navy);background:var(--paper);color:var(--navy);border-radius:4px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;}
-  .toolbtn:hover{background:var(--navy);color:var(--sand);}
-  .toolbtn.secondary{border-color:var(--line);color:var(--muted);}
-  .toolbtn.secondary:hover{background:var(--line);color:var(--ink);}
-  .toolstatus{flex-basis:100%;color:var(--muted);font-size:12px;line-height:1.4;min-height:16px;}
-  .card{background:var(--paper);border:1px solid var(--line);border-radius:4px;padding:20px 22px;margin-bottom:22px;box-shadow:0 1px 0 rgba(31,48,64,.04);}
-  .card h2{font-family:Georgia,serif;font-size:16px;color:var(--navy);margin:0 0 4px;display:flex;align-items:center;gap:8px;}
-  .card h2 .n{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--navy);color:var(--sand);font-size:11px;font-family:Georgia,serif;flex:none;}
-  .card p.hint{color:var(--muted);font-size:12.5px;margin:0 0 14px;line-height:1.5;}
-  label.fld{display:block;font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px;}
-  .fld-note{font-size:11px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;}
-  .grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px 18px;}
-  input[type=number]{width:100%;border:1px solid var(--line);background:#fff;border-radius:3px;padding:7px 8px;font-size:13.5px;color:var(--ink);font-family:inherit;-moz-appearance:textfield;appearance:textfield;}
-  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
-  .inline-suffix{position:relative;}
-  .inline-suffix input{padding-right:26px;}
-  .inline-suffix .suffix{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:12px;pointer-events:none;}
-  details{margin-top:14px;}
-  summary{cursor:pointer;font-size:12.5px;color:var(--teal);font-weight:600;}
-  table{width:100%;border-collapse:collapse;font-size:12px;margin-top:10px;}
-  th{text-align:left;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;padding:0 8px 8px;border-bottom:1px solid var(--line);}
-  td{padding:5px 8px;border-bottom:1px solid #e3e8f0;white-space:nowrap;}
-  td.num{text-align:right;font-variant-numeric:tabular-nums;}
+  table{font-size:12px;margin-top:10px;} /* denser tables than the shared default */
   tr.hit td{background:rgba(163,190,140,.18);font-weight:700;}
-  .segmented{display:inline-flex;border:1px solid var(--navy);border-radius:4px;overflow:hidden;flex-wrap:wrap;}
-  .segmented button{border:none;background:var(--paper);color:var(--navy);padding:8px 15px;font-size:12.5px;cursor:pointer;font-weight:600;}
-  .segmented button.active{background:var(--navy);color:var(--sand);}
-  .addbtn{border:1px dashed var(--teal);background:transparent;color:#4f8a8f;border-radius:3px;padding:7px 12px;font-size:12.5px;cursor:pointer;font-weight:600;}
-  .addbtn:hover{background:rgba(79,138,143,.08);}
-  .iconbtn{border:1px solid var(--line);background:#fff;color:var(--muted);border-radius:3px;width:26px;height:26px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;}
-  .iconbtn:hover{background:var(--sand);color:var(--navy);}
-  .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;}
-  footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:30px;}
 
   /* results */
-  .verdict-card{background:var(--navy);color:var(--sand);border-color:var(--navy);}
-  .verdict-card h2{color:var(--sand);}
-  .verdict-card p.hint{color:#c9d2e0;}
   .big-num{font-family:Georgia,serif;font-size:52px;line-height:1;font-weight:700;margin:6px 0 2px;}
-  .chain{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:#c9d2e0;}
+  .chain{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px;font-size:13px;color:var(--on-navy);}
   .chain .step{background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:4px;padding:7px 11px;}
   .chain .step b{color:var(--sand);font-variant-numeric:tabular-nums;}
-  .chain .op{font-weight:700;color:#aeb9cc;}
-  .metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:18px;}
-  .metric{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:11px 13px;}
-  .metric .k{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:#aeb9cc;margin-bottom:5px;}
-  .metric .val{font-family:Georgia,serif;font-size:19px;font-weight:700;color:var(--sand);}
-  .metric .val.small{font-size:15px;}
-
+  .chain .op{font-weight:700;color:var(--on-navy-muted);}
   .result-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;}
   .result-head .big-num{color:var(--navy);}
   .result-head .tag{font-size:13px;color:var(--muted);max-width:420px;line-height:1.45;}
@@ -93,6 +32,7 @@
   .verdict-line.good{color:#5f7d4f;font-weight:600;}
   .verdict-line.warn{color:#9a7b2d;font-weight:600;}
   .issues{margin:12px 0 0;padding:0;list-style:none;font-size:12px;color:var(--coral);line-height:1.6;}
+  .prefill-banner{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#fff;border:1px solid var(--teal);border-radius:4px;padding:10px 14px;margin-bottom:22px;font-size:13px;color:var(--ink);}
   @media (max-width:640px){
     body{padding:20px 10px 48px;}
     h1{font-size:26px;}
@@ -115,7 +55,14 @@
   <div class="toolbar">
     <button class="toolbtn" onclick="loadSampleData()">Load sample data</button>
     <button class="toolbtn secondary" onclick="resetDefaults()">Reset to defaults</button>
+    <button class="toolbtn secondary" onclick="copyShareLink()">Copy share link</button>
+    <button class="toolbtn secondary" onclick="copyLinkForRetirement()">Copy link for Retirement Planner</button>
     <div class="toolstatus" id="toolStatus" aria-live="polite"></div>
+  </div>
+
+  <div class="prefill-banner" id="prefillBanner" hidden>
+    <span id="prefillMsg"></span>
+    <button class="toolbtn secondary" onclick="dismissPrefill()">Got it</button>
   </div>
 
   <!-- RESULTS (top so edits show impact immediately) -->
@@ -220,10 +167,12 @@
     </details>
   </div>
 
-  <footer>Runs entirely in your browser; your numbers stay on this device. Estimates, not financial advice.</footer>
+  <footer>Runs entirely in your browser; your numbers stay on this device unless you create a share link. Estimates, not financial advice.</footer>
 </div>
 
+<script src="common.js"></script>
 <script src="fire-engine.js"></script>
+<script src="plan-state.js"></script>
 <script>
 const STORAGE_KEY = 'fire-calculator-state-v1';
 let state = loadState();
@@ -240,55 +189,9 @@ function saveState(){
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) { /* private mode etc. */ }
 }
 
-function getByPath(obj, path){
-  return path.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
-}
-
-function setByPath(obj, path, value){
-  const keys = path.split('.');
-  const last = keys.pop();
-  const parent = keys.reduce((o, k) => o[k], obj);
-  parent[last] = value;
-}
-
-function fmtMoney(n){
-  if (!Number.isFinite(n)) return '—';
-  return '$' + Math.round(n).toLocaleString('en-US');
-}
-
-function fmtCompact(n){
-  if (!Number.isFinite(n)) return '—';
-  if (Math.abs(n) >= 1e6) return '$' + (n / 1e6).toFixed(n >= 1e7 ? 1 : 2) + 'M';
-  if (Math.abs(n) >= 1e3) return '$' + Math.round(n / 1e3) + 'k';
-  return '$' + Math.round(n);
-}
-
-function fmtPct(x){
-  if (!Number.isFinite(x)) return '—';
-  return (x * 100).toFixed(Math.abs(x * 100) < 10 ? 1 : 0) + '%';
-}
-
-function coerce(el){
-  const v = el.value.trim();
-  const t = el.dataset.type || 'money';
-  if (v === '') return null;
-  const n = Number(v);
-  if (!Number.isFinite(n)) return null;
-  if (t === 'int') return Math.round(n);
-  if (t === 'pct') return n / 100;
-  return n;
-}
-
-function displayValue(el, v){
-  const t = el.dataset.type || 'money';
-  if (v == null || !Number.isFinite(v)) return '';
-  if (t === 'pct') return String(+(v * 100).toFixed(2));
-  return String(v);
-}
-
 function syncInputsFromState(){
   document.querySelectorAll('[data-path]').forEach(el => {
-    el.value = displayValue(el, getByPath(state, el.dataset.path));
+    displayValue(el, getByPath(state, el.dataset.path));
   });
   setSpendModeButtons();
 }
@@ -336,7 +239,7 @@ function updateItemsSubtotal(){
   const items = state.money.items || [];
   const total = items.reduce((sum, it) => sum + FireEngine.itemAnnual(it), 0);
   document.getElementById('itemsSubtotal').textContent = items.length
-    ? `Total: ${fmtMoney(Math.round(total))}/yr in today's dollars`
+    ? `Total: ${fmt(Math.round(total))}/yr in today's dollars`
     : '';
 }
 
@@ -359,8 +262,7 @@ function bindStaticInputs(){
   document.querySelectorAll('[data-path]').forEach(el => {
     const ev = el.type === 'number' ? 'input' : 'change';
     el.addEventListener(ev, () => {
-      const v = coerce(el);
-      if (v !== null) setByPath(state, el.dataset.path, v);
+      setByPath(state, el.dataset.path, coerce(el));
       saveState();
       recompute();
     });
@@ -369,7 +271,7 @@ function bindStaticInputs(){
 
 function bindDynamic(container, afterChange){
   container.querySelectorAll('[data-path]').forEach(el => {
-    el.value = displayValue(el, getByPath(state, el.dataset.path));
+    displayValue(el, getByPath(state, el.dataset.path));
     const ev = (el.type === 'checkbox' || el.tagName === 'SELECT') ? 'change' : 'input';
     el.addEventListener(ev, () => {
       setByPath(state, el.dataset.path, coerce(el));
@@ -391,13 +293,13 @@ function renderResults(p){
   // Card 1: FIRE number
   document.getElementById('fireNum').textContent = fmtCompact(p.fire.fireNumber);
   document.getElementById('fireChain').innerHTML =
-    `<span class="step">Live on <b>${fmtMoney(p.fire.annualSpending)}</b>/yr after tax</span>` +
+    `<span class="step">Live on <b>${fmt(p.fire.annualSpending)}</b>/yr after tax</span>` +
     `<span class="op">÷ ${(1 - p.fire.taxRate).toFixed(2)}</span>` +
-    `<span class="step">Withdraw <b>${fmtMoney(p.fire.grossWithdrawal)}</b>/yr pre-tax</span>` +
+    `<span class="step">Withdraw <b>${fmt(p.fire.grossWithdrawal)}</b>/yr pre-tax</span>` +
     `<span class="op">÷ ${fmtPct(p.fire.withdrawalRate)} withdrawal rate</span>` +
     `<span class="op">=</span>` +
-    `<span class="step"><b>${fmtMoney(p.fire.fireNumber)}</b></span>`;
-  document.getElementById('grossDraw').textContent = fmtMoney(p.fire.grossWithdrawal) + '/yr';
+    `<span class="step"><b>${fmt(p.fire.fireNumber)}</b></span>`;
+  document.getElementById('grossDraw').textContent = fmt(p.fire.grossWithdrawal) + '/yr';
   document.getElementById('spendMultiple').textContent = p.fire.spendingMultiple.toFixed(1) + '× spending';
   document.getElementById('realReturnOut').textContent = fmtPct(p.realReturn) + ' real';
 
@@ -458,11 +360,87 @@ function recompute(){
   renderResults(FireEngine.fullProjection(state));
 }
 
-function flashStatus(msg){
+function flashStatus(msg, isError){
   const el = document.getElementById('toolStatus');
   el.textContent = msg;
+  el.style.color = isError ? 'var(--coral)' : '';
   clearTimeout(flashStatus._t);
   flashStatus._t = setTimeout(() => { el.textContent = ''; }, 4000);
+}
+
+// ---- share links & prefill (opt-in; nothing is written to the URL while editing)
+
+async function copyText(text){
+  if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return; }
+  const el = document.createElement('textarea'); el.value = text; el.setAttribute('readonly', '');
+  el.style.position = 'fixed'; el.style.left = '-9999px';
+  document.body.appendChild(el); el.select(); document.execCommand('copy'); el.remove();
+}
+
+function buildShareFull(){
+  return PlanState.buildFullState({
+    origin: 'fire-calculator',
+    you: { currentAge: state.you.currentAge },
+    fire: state
+  });
+}
+
+async function copyShareLink(){
+  try {
+    const url = await PlanState.buildShareUrl(buildShareFull(), '');
+    await copyText(url);
+    flashStatus('Copied share link. Your plan travels inside the link — anyone with it can open it.');
+  } catch (e) {
+    flashStatus('Could not create the share link.', true);
+  }
+}
+
+async function copyLinkForRetirement(){
+  try {
+    const full = buildShareFull();
+    full.retirement = PlanState.prefillRetirementFromFire(full).retirement;
+    const url = await PlanState.buildShareUrl(full, 'retirement-calculator.html');
+    await copyText(url);
+    flashStatus('Copied link — open it in the Retirement Planner to prefill it.');
+  } catch (e) {
+    flashStatus('Could not create the link.', true);
+  }
+}
+
+function showPrefillBanner(msg){
+  document.getElementById('prefillMsg').textContent = msg;
+  document.getElementById('prefillBanner').hidden = false;
+}
+
+function dismissPrefill(){
+  document.getElementById('prefillBanner').hidden = true;
+  PlanState.clearStateHash();
+}
+
+async function loadSharedPlan(){
+  const errors = [];
+  const shared = await PlanState.readSharedState(msg => errors.push(msg));
+  if (!shared) {
+    if (errors.length) flashStatus(errors[0], true);
+    return false;
+  }
+  let msg = 'Loaded plan from another calculator — values are prefilled, edit freely.';
+  if (shared.meta && shared.meta.origin === 'debt-calculator' && shared.debts && shared.debts.length) {
+    const pre = PlanState.prefillFireFromDebt(shared);
+    state = pre.fire;
+    if (pre.debtFreeAge != null) {
+      msg = `Loaded debt plan — yearly savings prefilled at ${fmt(pre.annualInvesting)} (valid from your debt-free date, around age ${pre.debtFreeAge}). Edit freely.`;
+    }
+  } else if (shared.fire) {
+    state = FireEngine.normalizeState(shared.fire);
+  } else {
+    return false;
+  }
+  saveState();
+  syncInputsFromState();
+  showPrefillBanner(msg);
+  PlanState.clearStateHash(); // never re-applies after this point
+  return true;
 }
 
 function loadSampleData(){
@@ -483,9 +461,13 @@ function resetDefaults(){
   flashStatus('Reset to defaults.');
 }
 
-syncInputsFromState();
 bindStaticInputs();
-recompute();
+(async function init(){
+  await loadSharedPlan();
+  syncInputsFromState();
+  renderExpenseItems();
+  recompute();
+})();
 </script>
 </body>
 </html>
